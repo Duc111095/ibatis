@@ -8,16 +8,16 @@
 		<java.version>11</java.version>
 		<java.release.version>11</java.release.version>
 		<impsort.compliance>17</impsort.compliance>
-
 		<clirr.comparisonVersion>3.4.6</clirr.comparisonVersion>
-
 		<byte-buddy.version>1.17.7</byte-buddy.version>
 		<derby.version>10.17.1.0</derby.version>
 		<log4j.version>2.25.1</log4j.version>
 		<mockito.version>5.19.0</mockito.version>
 		<mssql-jdbc.version>13.2.0.jre11</mssql-jdbc.version>
 		<testcontainers.version>1.21.3</testcontainers.version>
-		<excludedGroups>TestcontainersTests,RequireIllegalAccess</excludedGroups>c
+		<git-build-hook.version>3.5.0</git-build-hook.version>
+		<excludedGroups>TestcontainersTests,RequireIllegalAccess</excludedGroups>
+		
 		<argLine>-Xmx2048m -javaagent:${settings.localRepository}/net/bytebuddy/byte-buddy-agent/${byte-buddy.version}/byte-buddy-agent-${byte-buddy.version}.jar</argLine>
 		<project.build.outputTimestamp>1735704225</project.build.outputTimestamp>
 	</properties>
@@ -320,8 +320,71 @@
 				</configuration>
 			</plugin>
 			<plugin>
-				
+				<groupId>com.rudikershaw.gitbuildhook</groupId>
+				<artifactId>git-build-hook-maven-plugin</artifactId>
+				<version>${git-build-hook.version}</version>
+				<configuration>
+					<installHooks>
+						<pre-commit>hooks/pre-commit.sh</pre-commit>
+					</installHooks>
+				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>install</goal>
+						</goals>
+					</execution>
+				</executions>
 			</plugin>
 		</plugins>
 	</build>
+	<profiles>
+		<profile>
+			<id>testContainers</id>
+			<properties>
+				<excludedGroups>RequireIllegalAccess</excludedGroups>
+			</properties>
+		</profile>
+		<profile>
+			<id>17</id>
+			<activation>
+				<jdk>[17, )</jdk>
+			</activation>
+			<properties>
+				<derby.version>10.16.1.1</derby.version>
+			</properties>
+		</profile>
+		<profile>
+			<id>19</id>
+			<activation>
+				<jdk>[19, )</jdk>
+			</activation>
+			<properties>
+				<derby.version>10.17.1.0</derby.version>
+			</properties>
+		</profile>
+		<profile>
+			<id>release</id>
+			<build>
+				<plugins>
+					<plugin>
+						<groupId>org.apache.maven.plugins</groupId>
+						<artifactId>maven-source-plugin</artifactId>
+						<executions>
+							<execution>
+								<id>attach-sources</id>
+								<goals>
+									<goal>jar-no-fork</goal>
+								</goals>
+								<phase>prepare-package</phase>
+								<configuration>
+									<attach>false</attach>
+								</configuration>
+							</execution>
+						</executions>
+					</plugin>
+				</plugins>
+			</build>
+		</profile>
+	</profiles>
 </project>
