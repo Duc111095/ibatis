@@ -216,6 +216,11 @@
 			<version>1.5.18</version>
 			<scope>test</scope>
 		</dependency>
+		<dependency>
+			<groupId>com.ducnh</groupId>
+			<artifactId>synchronize-database</artifactId>
+			<version>0.0.1-SNAPSHOT</version>
+		</dependency>
 	</dependencies>
 	<build>
 		<plugins>
