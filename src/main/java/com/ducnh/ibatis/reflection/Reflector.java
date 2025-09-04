@@ -1,6 +1,8 @@
 package com.ducnh.ibatis.reflection;
 
 import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 import java.lang.reflect.Array;
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -361,5 +363,41 @@ public class Reflector {
 		});
 	}
 	
+	public String[] getGetablePropertyNames() {
+		return readablePropertyNames;
+	}
 	
+	public String[] getSetablePropertyNames() {
+		return writablePropertyNames;
+	}
+	
+	public boolean hasSetter(String propertyName) {
+		return setMethods.containsKey(propertyName);
+	}
+	
+	public boolean hasGetter(String propertyName) {
+		return getMethods.containsKey(propertyName);
+	}
+	
+	public String findPropertyName(String name) {
+		return caseInsensitivePropertyMap.get(name.toUpperCase(Locale.ENGLISH));
+	}
+	
+	private static boolean isRecord(Class<?> clazz) {
+		try {
+			return isRecordMethodHandle != null && (boolean) isRecordMethodHandle.invokeExact(clazz);
+		} catch (Throwable e) {
+			throw new ReflectionException("Failed to invoke 'Class.isRecord()'.", e);
+		}
+	}
+	
+	private static MethodHandle getIsRecordMethodHandle() {
+		MethodHandles.Lookup lookup = MethodHandles.lookup();
+		MethodType mt = MethodType.methodType(boolean.class);
+		try {
+			return lookup.findVirtual(Class.class, "isRecord", mt);
+		} catch (NoSuchMethodException | IllegalAccessException e) {
+			return null;
+		}
+	}
 }
