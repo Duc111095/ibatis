@@ -1,6 +1,7 @@
 package com.ducnh.ibatis.reflection.wrapper;
 
 import java.lang.reflect.Type;
+import java.util.List;
 import java.util.Map.Entry;
 
 import com.ducnh.ibatis.reflection.factory.ObjectFactory;
