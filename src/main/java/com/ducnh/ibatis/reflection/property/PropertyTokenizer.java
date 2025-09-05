@@ -37,6 +37,10 @@ public class PropertyTokenizer implements Iterator<PropertyTokenizer>{
 		return indexedName;
 	}
 	
+	public String getChildren() {
+		return children;
+	}
+	
 	@Override
 	public boolean hasNext() {
 		return children != null;

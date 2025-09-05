@@ -12,9 +12,10 @@ import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.ReflectPermission;
 import java.lang.reflect.Type;
-impo
+
 import java.text.MessageFormat;
 import java.util.AbstractMap;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.HashMap;
@@ -24,7 +25,12 @@ import java.util.Map.Entry;
 
 import java.util.List;
 
+import com.ducnh.ibatis.reflection.invoker.AmbiguousMethodInvoker;
+import com.ducnh.ibatis.reflection.invoker.GetFieldInvoker;
 import com.ducnh.ibatis.reflection.invoker.Invoker;
+import com.ducnh.ibatis.reflection.invoker.MethodInvoker;
+import com.ducnh.ibatis.reflection.invoker.SetFieldInvoker;
+import com.ducnh.ibatis.reflection.property.PropertyNamer;
 
 
 public class Reflector {
@@ -126,7 +132,7 @@ public class Reflector {
 				name, method.getDeclaringClass().getName())) : new MethodInvoker(method);
 		getMethods.put(name, invoker);
 		Type returnType = TypeParameterResolver.resolveReturnType(method, type);
-		getTypes.put(name, Map.entry(returnType, typeToClass(returnType))));
+		getTypes.put(name, Map.entry(returnType, typeToClass(returnType)));
 	}
 	
 	private void addSetMethods(Method[] methods) {
