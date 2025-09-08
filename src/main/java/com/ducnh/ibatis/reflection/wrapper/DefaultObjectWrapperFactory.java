@@ -1,5 +1,6 @@
 package com.ducnh.ibatis.reflection.wrapper;
 
+import com.ducnh.ibatis.reflection.MetaObject;
 import com.ducnh.ibatis.reflection.ReflectionException;
 
 public class DefaultObjectWrapperFactory implements ObjectWrapperFactory{
