@@ -1,6 +1,7 @@
 package com.ducnh.ibatis.session;
 
 import java.io.Closeable;
+import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 

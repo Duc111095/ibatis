@@ -5,4 +5,6 @@ public class SqlSessionFactoryBuilder {
 	public SqlSessionFactory build(Reader reader) {
 		return build(reader, null, null);
 	}
+	
+	public SqlSessionFactory
 }
