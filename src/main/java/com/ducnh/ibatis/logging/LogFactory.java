@@ -47,7 +47,6 @@ public final class LogFactory {
 		setImplementation(com.ducnh.ibatis.logging.commons.JakartaCommonsLoggingImpl.class);
 	}
 	
-	@Deprecated
 	public static void useLog4JLogging() {
 		setImplementation(com.ducnh.ibatis.logging.log4j.Log4jImpl.class);
 	}
