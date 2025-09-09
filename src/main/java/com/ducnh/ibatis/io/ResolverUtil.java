@@ -1,7 +1,9 @@
 package com.ducnh.ibatis.io;
 
+import java.io.IOException;
 import java.lang.annotation.Annotation;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Set;
 
 import com.ducnh.ibatis.logging.Log;
@@ -74,7 +76,7 @@ public class ResolverUtil<T> {
 		return this;
 	}
 	
-	public ResolveUtil<T> findAnnotated(Class<? extends Annotation> annotation, String... packageNames) {
+	public ResolverUtil<T> findAnnotated(Class<? extends Annotation> annotation, String... packageNames) {
 		if (packageNames == null) {
 			return this;
 		}
@@ -84,5 +86,45 @@ public class ResolverUtil<T> {
 		}
 		
 		return this;
+	}
+	
+	public ResolverUtil<T> find(Test test, String packageName) {
+		String path = getPackagePath(packageName);
+		
+		try {
+			List<String> children = VFS.getInstance().list(path);
+			for (String child : children) {
+				if (child.endsWith(".class")) {
+					addIfMatching(test, child);
+				}
+			}
+		} catch (IOException ioe) {
+			log.error("Could not read package: " + packageName, ioe);
+		}
+		
+		return this;
+	}
+	
+	protected String getPackagePath(String packageName) {
+		return packageName == null ? null : packageName.replace('.', '/');
+	}
+	
+	@SuppressWarnings("unchecked")
+	protected void addIfMatching(Test test, String fqn) {
+		try {
+			String externalName = fqn.substring(0, fqn.indexOf('.')).replace('/', '.');
+			ClassLoader loader = getClassLoader();
+			if (log.isDebugEnabled()) {
+				log.debug("Checking to see if class " + externalName + " matches criteria [" + test + "]");
+			}
+			
+			Class<?> type = loader.loadClass(externalName);
+			if (test.matches(type)) {
+				matches.add((Class<T>) type);
+			}
+		} catch (Throwable t) {
+			log.warn("Could not examine class '" + fqn + "'" + " due to a " + t.getClass().getName() + " with message: " 
+				+ t.getMessage());
+		}
 	}
 }
