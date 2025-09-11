@@ -3,6 +3,7 @@ package com.ducnh.ibatis.cursor.defaults;
 import java.util.Iterator;
 
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.session.RowBounds;
 
 public class DefaultCursor<T> implements Cursor<T> {
 	
