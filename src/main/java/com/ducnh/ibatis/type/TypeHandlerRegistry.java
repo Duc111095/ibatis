@@ -188,4 +188,55 @@ public final class TypeHandlerRegistry {
 		typeHandlerMap.put(type, jdbcHandlerMap == null ? NULL_TYPE_HANDLER_MAP : jdbcHandlerMap);
 		return jdbcHandlerMap;
 	}
+	
+	private Map<JdbcType, TypeHandler<?>> getJdbcHandlerMapForSuperclass(Class<?> clazz) {
+		Class<?> superClass = clazz.getSuperclass();
+		if (superClass == null || Object.class.equals(superClass)) {
+			return null;
+		}
+		Map<JdbcType, TypeHandler<?>> jdbcHandlerMap = typeHandlerMap.get(superClass);
+		if (jdbcHandlerMap != null) {
+			return jdbcHandlerMap;
+		}
+		
+		return getJdbcHandlerMapForSuperclass(superClass);
+	}
+	
+	private TypeHandler<?> pickSoleHandler(Map<JdbcType, TypeHandler<?>> jdbcHandlerMap) {
+		TypeHandler<?> soleHandler = null;
+		for (TypeHandler<?> handler : jdbcHandlerMap.values()) {
+			if (soleHandler == null) {
+				soleHandler = handler;
+			} else if (!handler.getClass().equals(soleHandler.getClass())) {
+				return null;
+			}
+		}
+		return soleHandler;
+	}
+	
+	public void register(JdbcType mappedJdbcType, TypeHandler<?> handler) {
+		jdbcTypeHandlerMap.put(mappedJdbcType, handler);
+	}
+	
+	public <T> void register(TypeHandler<T> handler) {
+		register(mapperJavaTypes(handler.getClass()), mappedJdbcTypes(handler.getClass()), handler);
+	}
+	
+	public void register(Class<?> mappedJavaType, TypeHandler<?> handler) {
+		register((Type) mappedJavaType, handler);
+	}
+	
+	private void register(Type mappedJavaType, TypeHandler<?> handler) {
+		register(new Type[] {mappedJavaType}, mappedJdbcTypes(handler.getClass()), handler);
+	}
+	
+	public <T> void register(TypeReference<T> javaTypeReference, TypeHandler<? extends T> handler) {
+		register(javaTypeReference.getRawType(), handler);
+	}
+	
+	public void register(Type mappedJavaType, JdbcType mappedJdbcType, TypeHandler<?> handler) {
+		register(new Type[] {mappedJavaType}, new JdbcType[] {mappedJdbcType}, handler);
+	}
+	
+	
 }
