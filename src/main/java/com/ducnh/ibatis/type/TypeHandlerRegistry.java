@@ -1,15 +1,40 @@
 package com.ducnh.ibatis.type;
 
+import java.io.InputStream;
+import java.io.Reader;
 import java.lang.reflect.Constructor;
+import java.lang.reflect.Modifier;
 import java.lang.reflect.ParameterizedType;
 import java.lang.reflect.Type;
+import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.sql.Time;
+import java.sql.Timestamp;
+import java.time.Instant;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.Month;
+import java.time.OffsetDateTime;
+import java.time.OffsetTime;
+import java.time.Year;
+import java.time.YearMonth;
+import java.time.ZonedDateTime;
+import java.time.chrono.JapaneseDate;
+import java.util.Arrays;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.Date;
 import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Map.Entry;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.Set;
 
+import com.ducnh.ibatis.io.ResolverUtil;
+import com.ducnh.ibatis.io.Resources;
+import com.ducnh.ibatis.reflection.TypeParameterResolver;
 import com.ducnh.ibatis.session.Configuration;
 
 public final class TypeHandlerRegistry {
@@ -30,8 +55,75 @@ public final class TypeHandlerRegistry {
 	
 	public TypeHandlerRegistry(Configuration configuration) {
 		register(new Type[] {Boolean.class, boolean.class}, new JdbcType[] {null}, BooleanTypeHandler.class);
-		
+		register(new Type[] { Byte.class, byte.class }, new JdbcType[] { null }, ByteTypeHandler.INSTANCE);
+	    register(new Type[] { Short.class, short.class }, new JdbcType[] { null }, ShortTypeHandler.INSTANCE);
+	    register(new Type[] { Integer.class, int.class }, new JdbcType[] { null }, IntegerTypeHandler.INSTANCE);
+	    register(new Type[] { Long.class, long.class }, new JdbcType[] { null }, LongTypeHandler.INSTANCE);
+	    register(new Type[] { Float.class, float.class }, new JdbcType[] { null }, FloatTypeHandler.INSTANCE);
+	    register(new Type[] { Double.class, double.class }, new JdbcType[] { null }, DoubleTypeHandler.INSTANCE);
+	    register(new Type[] { Character.class, char.class }, new JdbcType[] { null }, new CharacterTypeHandler());
+	    register(String.class, null, StringTypeHandler.INSTANCE);
+	    register(Reader.class, null, new ClobReaderTypeHandler());
+	    register(BigInteger.class, null, new BigIntegerTypeHandler());
+	    register(BigDecimal.class, null, BigDecimalTypeHandler.INSTANCE);
+	    register(InputStream.class, null, new BlobInputStreamTypeHandler());
+	    register(Byte[].class, null, new ByteObjectArrayTypeHandler());
+	    register(byte[].class, null, ByteArrayTypeHandler.INSTANCE);
+	    register(Date.class, null, DateTypeHandler.INSTANCE);
+	    register(java.sql.Date.class, null, new SqlDateTypeHandler());
+	    register(Time.class, null, new SqlTimeTypeHandler());
+	    register(Timestamp.class, null, new SqlTimestampTypeHandler());
+	    register(Instant.class, null, new InstantTypeHandler());
+	    register(LocalDateTime.class, null, new LocalDateTimeTypeHandler());
+	    register(LocalDate.class, null, new LocalDateTypeHandler());
+	    register(LocalTime.class, null, new LocalTimeTypeHandler());
+	    register(OffsetDateTime.class, null, new OffsetDateTimeTypeHandler());
+	    register(OffsetTime.class, null, new OffsetTimeTypeHandler());
+	    register(ZonedDateTime.class, null, new ZonedDateTimeTypeHandler());
+	    register(Month.class, null, new MonthTypeHandler());
+	    register(Year.class, null, new YearTypeHandler());
+	    register(YearMonth.class, null, new YearMonthTypeHandler());
+	    register(JapaneseDate.class, null, new JapaneseDateTypeHandler());
+
+	    register(String.class, JdbcType.CLOB, ClobTypeHandler.INSTANCE);
+	    register(String.class, JdbcType.NCLOB, NClobTypeHandler.INSTANCE);
+	    register(new Type[] { String.class }, new JdbcType[] { JdbcType.NCHAR, JdbcType.NVARCHAR, JdbcType.LONGNVARCHAR },
+	        NStringTypeHandler.INSTANCE);
+	    register(new Type[] { Byte[].class }, new JdbcType[] { JdbcType.BLOB, JdbcType.LONGVARBINARY },
+	        new BlobByteObjectArrayTypeHandler());
+	    register(new Type[] { byte[].class }, new JdbcType[] { JdbcType.BLOB, JdbcType.LONGVARBINARY },
+	        BlobTypeHandler.INSTANCE);
+	    register(Date.class, JdbcType.DATE, DateOnlyTypeHandler.INSTANCE);
+	    register(Date.class, JdbcType.TIME, TimeOnlyTypeHandler.INSTANCE);
+	    register(String.class, JdbcType.SQLXML, new SqlxmlTypeHandler());
+	    
 		jdbcTypeHandlerMap.put(JdbcType.BOOLEAN, BooleanTypeHandler.INSTANCE);
+		jdbcTypeHandlerMap.put(JdbcType.BIT, BooleanTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.TINYINT, ByteTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.SMALLINT, ShortTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.INTEGER, IntegerTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.BIGINT, LongTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.REAL, FloatTypeHandler.INSTANCE); // As per JDBC spec
+	    jdbcTypeHandlerMap.put(JdbcType.FLOAT, DoubleTypeHandler.INSTANCE); // As per JDBC spec
+	    jdbcTypeHandlerMap.put(JdbcType.DOUBLE, DoubleTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.DECIMAL, BigDecimalTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.NUMERIC, BigDecimalTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.CHAR, StringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.VARCHAR, StringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.LONGVARCHAR, StringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.CLOB, ClobTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.NVARCHAR, NStringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.NCHAR, NStringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.LONGNVARCHAR, NStringTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.NCLOB, NClobTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.ARRAY, new ArrayTypeHandler());
+	    jdbcTypeHandlerMap.put(JdbcType.BINARY, ByteArrayTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.VARBINARY, ByteArrayTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.LONGVARBINARY, ByteArrayTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.BLOB, BlobTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.TIMESTAMP, DateTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.DATE, DateOnlyTypeHandler.INSTANCE);
+	    jdbcTypeHandlerMap.put(JdbcType.TIME, TimeOnlyTypeHandler.INSTANCE);
 	}
 	
 	public void setDefaultEnumTypeHandler(@SuppressWarnings("rawtypes") Class<? extends TypeHandler> typeHandler) {
@@ -219,7 +311,7 @@ public final class TypeHandlerRegistry {
 	}
 	
 	public <T> void register(TypeHandler<T> handler) {
-		register(mapperJavaTypes(handler.getClass()), mappedJdbcTypes(handler.getClass()), handler);
+		register(mappedJavaTypes(handler.getClass()), mappedJdbcTypes(handler.getClass()), handler);
 	}
 	
 	public void register(Class<?> mappedJavaType, TypeHandler<?> handler) {
@@ -238,5 +330,116 @@ public final class TypeHandlerRegistry {
 		register(new Type[] {mappedJavaType}, new JdbcType[] {mappedJdbcType}, handler);
 	}
 	
+	private void register(Type[] mappedJavaTypes, JdbcType[] mappedJdbcTypes, TypeHandler<?> handler) {
+		for (Type javaType : mappedJavaTypes) {
+			if (javaType == null) {
+				continue;
+			}
+			
+			typeHandlerMap.compute(javaType, (k, v) -> {
+				Map<JdbcType, TypeHandler<?>> map = (v == null || v == NULL_TYPE_HANDLER_MAP ? new HashMap<>() : v);
+				for (JdbcType jdbcType : mappedJdbcTypes) {
+					map.put(jdbcType, handler);
+				}
+				return map;
+			});
+		}
+		allTypeHandlersMap.put(handler.getClass(), handler);
+	}
 	
+	public void register(Class<?> handlerClass) {
+		register(mappedJavaTypes(handlerClass), mappedJdbcTypes(handlerClass), handlerClass);
+	}
+	
+	public void register(String javaTypeClassName, String typeHandlerClassName) throws ClassNotFoundException {
+		register(Resources.classForName(javaTypeClassName), Resources.classForName(typeHandlerClassName));
+	}
+	
+	public void register(Type mappedJavaType, Class<?> handlerClass) {
+		register(new Type[] {mappedJavaType}, mappedJdbcTypes(handlerClass), handlerClass);
+	}
+	
+	private void register(Type[] mappedJavaTypes, JdbcType[] mappedJdbcTypes, Class<?> handlerClass) {
+		if (!TypeHandler.class.isAssignableFrom(handlerClass)) {
+			throw new IllegalArgumentException(String.format("'%s' does not implements TypeHandler.", handlerClass.getName()));
+		}
+		for (Constructor<?> constructor : handlerClass.getConstructors()) {
+			if (constructor.getParameterCount() != 1) {
+				continue;
+			}
+			Class<?> argType = constructor.getParameterTypes()[0];
+			if (Type.class.equals(argType) || Class.class.equals(argType)) {
+				for (Type javaType : mappedJavaTypes) {
+					smartHandlers.computeIfAbsent(javaType, k -> constructor);
+				}
+				return;
+			}
+		}
+		
+		register(mappedJavaTypes, mappedJdbcTypes, getInstance(null, handlerClass));
+	}
+	
+	private Type[] mappedJavaTypes(Class<?> clazz) {
+		MappedTypes mappedTypesAnno = clazz.getAnnotation(MappedTypes.class);
+		if (mappedTypesAnno != null) {
+			return mappedTypesAnno.value();
+		}
+		return TypeParameterResolver.resolveClassTypeParams(TypeHandler.class, clazz);
+	}
+	
+	private JdbcType[] mappedJdbcTypes(Class<?> clazz) {
+		MappedJdbcTypes mappedJdbcTypesAnno = clazz.getAnnotation(MappedJdbcTypes.class);
+		if (mappedJdbcTypesAnno != null) {
+			JdbcType[] jdbcTypes = mappedJdbcTypesAnno.value();
+			if (mappedJdbcTypesAnno.includeNullJdbcType()) {
+				int newLength = jdbcTypes.length + 1;
+				jdbcTypes = Arrays.copyOf(jdbcTypes, newLength);
+				jdbcTypes[newLength - 1] = null;
+			}
+			return jdbcTypes;
+		}
+		return new JdbcType[] { null };
+	}
+	
+	@SuppressWarnings("unchecked")
+	public <T> TypeHandler<T> getInstance(Type javaType, Class<?> handlerClass) {
+		Constructor<?> c;
+		try {
+			if (javaType != null) {
+				try {
+					c = handlerClass.getConstructor(Type.class);
+					return (TypeHandler<T>) c.newInstance(javaType);
+				} catch (NoSuchMethodException ignored) {}
+				if (javaType instanceof Class) {
+					try {
+						c = handlerClass.getConstructor(Class.class);
+						return (TypeHandler<T>) c.newInstance(javaType);
+					} catch (NoSuchMethodException ignored) {}
+				}
+			}
+			try {
+				c = handlerClass.getConstructor();
+				return (TypeHandler<T>) c.newInstance();
+			} catch (NoSuchMethodException e) {
+				throw new TypeException("Unable to find a usable constructor for " + handlerClass, e);
+			}
+		} catch (ReflectiveOperationException e) {
+			throw new TypeException("Failed to invoke constructor for handler " + handlerClass, e);
+		}
+	}
+	
+	public void register(String packageName) {
+		ResolverUtil<Class<?>> resolverUtil = new ResolverUtil<>();
+		resolverUtil.find(new ResolverUtil.IsA(TypeHandler.class), packageName);
+		Set<Class<? extends Class<?>>> handlerSet = resolverUtil.getClasses();
+		for (Class<?> type : handlerSet) {
+			if (!type.isAnonymousClass() && !type.isInterface() && !Modifier.isAbstract(type.getModifiers())) {
+				register(type);
+			}
+		}
+	}
+	
+	public Collection<TypeHandler<?>> getTypeHandlers() {
+		return Collections.unmodifiableCollection(allTypeHandlersMap.values());
+	}
 }

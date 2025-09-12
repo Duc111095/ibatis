@@ -6,7 +6,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.time.OffsetTime;
 
-public class OffsetTimeHandler extends BaseTypeHandler<OffsetTime>{
+public class OffsetTimeTypeHandler extends BaseTypeHandler<OffsetTime>{
 	
 	@Override
 	public void setNonNullParameter(PreparedStatement ps, int i, OffsetTime parameter, JdbcType jdbcType) 
