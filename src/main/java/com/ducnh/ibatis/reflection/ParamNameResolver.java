@@ -15,6 +15,7 @@ import java.util.TreeMap;
 
 import com.ducnh.ibatis.annotations.Delete.List;
 import com.ducnh.ibatis.annotations.Param;
+import com.ducnh.ibatis.binding.MapperMethod.ParamMap;
 import com.ducnh.ibatis.reflection.property.PropertyTokenizer;
 import com.ducnh.ibatis.session.Configuration;
 import com.ducnh.ibatis.session.ResultHandler;
@@ -144,7 +145,7 @@ public class ParamNameResolver {
 				Integer paramIndex = Integer.valueOf(unindexed.substring(GENERIC_NAME_PREFIX.length())) - 1;
 				unindexed = names.get(paramIndex);
 				if (unindexed != null) {
-					type = typeMap.get(unindexed));
+					type = typeMap.get(unindexed);
 				}
 			} catch (NumberFormatException e) {
 				// user mistake
