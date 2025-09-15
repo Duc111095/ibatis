@@ -5,6 +5,8 @@ import java.sql.Connection;
 import java.util.List;
 import java.util.Map;
 
+import com.ducnh.ibatis.cursor.Cursor;
+
 public interface SqlSession extends Closeable {
 	<T> T selectOne(String statement);
 	<T> T selectOne(String statement, Object parameter);

@@ -110,7 +110,7 @@ public class UnpooledDataSource implements DataSource {
 		return driverProperties;
 	}
 	
-	public void setProperties(Properties properties) {
+	public void setDriverProperties(Properties properties) {
 		this.driverProperties = properties;
 	}
 	
@@ -281,6 +281,11 @@ public class UnpooledDataSource implements DataSource {
 	@Override
 	public Logger getParentLogger() {
 		return Logger.getLogger(Logger.GLOBAL_LOGGER_NAME);
+	}
+
+	@Override
+	public int getLoginTimeout() throws SQLException {
+		return DriverManager.getLoginTimeout();
 	}
 }
 

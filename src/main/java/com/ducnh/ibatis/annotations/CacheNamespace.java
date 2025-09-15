@@ -6,6 +6,10 @@ import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 
+import com.ducnh.ibatis.cache.Cache;
+import com.ducnh.ibatis.cache.decorators.LruCache;
+import com.ducnh.ibatis.cache.impl.PerpetualCache;
+
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target(ElementType.TYPE)

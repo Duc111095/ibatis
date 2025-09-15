@@ -11,6 +11,7 @@ import java.util.Optional;
 
 import com.ducnh.ibatis.annotations.Flush;
 import com.ducnh.ibatis.annotations.MapKey;
+import com.ducnh.ibatis.cursor.Cursor;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.SqlCommandType;
 import com.ducnh.ibatis.mapping.StatementType;
