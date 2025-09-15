@@ -6,18 +6,24 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.ducnh.ibatis.cache.Cache;
+import com.ducnh.ibatis.cache.CacheException;
+import com.ducnh.ibatis.cache.decorators.BlockingCache;
+import com.ducnh.ibatis.cache.decorators.LoggingCache;
+import com.ducnh.ibatis.cache.decorators.LruCache;
+import com.ducnh.ibatis.cache.decorators.ScheduledCache;
+import com.ducnh.ibatis.cache.decorators.SerializedCache;
+import com.ducnh.ibatis.cache.decorators.SynchronizedCache;
+import com.ducnh.ibatis.cache.impl.PerpetualCache;
 import com.ducnh.ibatis.reflection.MetaObject;
 import com.ducnh.ibatis.reflection.SystemMetaObject;
-
-import ognl.internal.Cache;
-
 
 
 public class CacheBuilder {
 
 	private final String id;
 	private Class<? extends Cache> implementation;
-	private final List<Class<? extends Cache<K, V>>> decorators;
+	private final List<Class<? extends Cache>> decorators;
 	private Integer size;
 	private Long clearInterval;
 	private boolean readWrite;
@@ -98,8 +104,8 @@ public class CacheBuilder {
 				metaCache.setValue("size", size);
 			}
 			if (clearInterval != null) {
-				cache = new ScheduleCache(cache);
-				((ScheduleCache) cache).setClearInterval(clearInterval);
+				cache = new ScheduledCache(cache);
+				((ScheduledCache) cache).setClearInterval(clearInterval);
 			}
 			if (readWrite) {
 				cache = new SerializedCache(cache);
@@ -164,16 +170,16 @@ public class CacheBuilder {
 		}
 	}
 	
-	private Constructor<? extends Cache> getBaseCacheConstructor(Class<? extends Cache<K, V>> cacheClass) {
+	private Constructor<? extends Cache> getBaseCacheConstructor(Class<? extends Cache> cacheClass) {
 		try {
-			cacheClass.getConstructor(String.class);
+			return cacheClass.getConstructor(String.class);
 		} catch (Exception e) {
 			throw new CacheException("Invalid base cache implementation (" + cacheClass + "). "
 				+ "Base cache implementation must have a constructor that takes a String id as a parameter. Cause: " + e, e);
 		}
 	}
 	
-	private Cache newCacheDecoratorInstance(Calss<? extends Cache> cacheClass, Cache base) {
+	private Cache newCacheDecoratorInstance(Class<? extends Cache> cacheClass, Cache base) {
 		Constructor<? extends Cache> cacheConstructor = getCacheDecoratorConstructor(cacheClass);
 		try {
 			return cacheConstructor.newInstance(base);
