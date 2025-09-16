@@ -52,7 +52,7 @@ public class CacheBuilder {
 		return this;
 	}
 	
-	public CacheBuilder clearInteval(Long clearInterval) {
+	public CacheBuilder clearInterval(Long clearInterval) {
 		this.clearInterval = clearInterval;
 		return this;
 	}

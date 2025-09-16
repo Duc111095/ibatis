@@ -1,8 +1,19 @@
 package com.ducnh.ibatis.builder;
 
+import java.lang.reflect.Type;
+import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
+import java.util.Map.Entry;
 import java.util.Properties;
+import java.util.Set;
+import java.util.StringTokenizer;
+
+import javax.crypto.KeyGenerator;
 
 import com.ducnh.ibatis.cache.Cache;
 import com.ducnh.ibatis.cache.decorators.LruCache;
@@ -10,12 +21,19 @@ import com.ducnh.ibatis.cache.impl.PerpetualCache;
 import com.ducnh.ibatis.executor.ErrorContext;
 import com.ducnh.ibatis.mapping.CacheBuilder;
 import com.ducnh.ibatis.mapping.Discriminator;
+import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.ParameterMap;
 import com.ducnh.ibatis.mapping.ParameterMapping;
 import com.ducnh.ibatis.mapping.ParameterMode;
 import com.ducnh.ibatis.mapping.ResultFlag;
 import com.ducnh.ibatis.mapping.ResultMap;
 import com.ducnh.ibatis.mapping.ResultMapping;
+import com.ducnh.ibatis.mapping.ResultSetType;
+import com.ducnh.ibatis.mapping.SqlCommandType;
+import com.ducnh.ibatis.mapping.SqlSource;
+import com.ducnh.ibatis.mapping.StatementType;
+import com.ducnh.ibatis.reflection.MetaClass;
+import com.ducnh.ibatis.reflection.ParamNameResolver;
 import com.ducnh.ibatis.session.Configuration;
 import com.ducnh.ibatis.type.JdbcType;
 import com.ducnh.ibatis.type.TypeHandler;
@@ -91,8 +109,8 @@ public class MapperBuilderAssistant extends BaseBuilder{
 	
 	public Cache useNewCache(Class<? extends Cache> typeClass, Class<? extends Cache> evictionClass, Long flushInterval,
 		Integer size, boolean readWrite, boolean blocking, Properties props) {
-		Cache cache = new CacheBuilder(currentNamespace).implementation(valueOfDefault(typeClass, PerpetualCache.class))
-				.addDecorator(valueOfDefault(evictionClass, LruCache.class)).clearInterval(flushInterval).size(size)
+		Cache cache = new CacheBuilder(currentNamespace).implementation(valueOrDefault(typeClass, PerpetualCache.class))
+				.addDecorator(valueOrDefault(evictionClass, LruCache.class)).clearInterval(flushInterval).size(size)
 				.readWrite(readWrite).blocking(blocking).properties(props).build();
 		configuration.addCache(cache);
 		currentCache = cache;
@@ -100,7 +118,7 @@ public class MapperBuilderAssistant extends BaseBuilder{
 	}
 	
 	public ParameterMap addParameterMap(String id, Class<?> parameterClass, List<ParameterMapping> parameterMappings) {
-		id = applyCurrentNamespacE(id, false);
+		id = applyCurrentNamespace(id, false);
 		ParameterMap parameterMap = new ParameterMap.Builder(configuration, id, parameterClass, parameterMappings).build();
 		configuration.addParameterMap(parameterMap);
 		return parameterMap;
@@ -149,5 +167,202 @@ public class MapperBuilderAssistant extends BaseBuilder{
 		return resultMap;
 	}
 	
+	
+	public Discriminator buildDiscriminator(Class<?> resultType, String column, Class<?> javaType, JdbcType jdbcType,
+		Class<? extends TypeHandler<?>> typeHandler, Map<String, String> discriminatorMap) {
+		ResultMapping resultMapping = buildResultMapping(resultType, null, column, javaType, jdbcType, null, null, null, 
+			null, typeHandler, new ArrayList<>(), null, null, false);
+		Map<String, String> namespaceDiscriminatorMap = new HashMap<>();
+		for (Map.Entry<String, String> e : discriminatorMap.entrySet()) {
+			String resultMap = e.getValue();
+			resultMap = applyCurrentNamespace(resultMap, true);
+			namespaceDiscriminatorMap.put(e.getKey(), resultMap);
+		}
+		return new Discriminator.Builder(configuration, resultMapping, namespaceDiscriminatorMap).build();
+	}
+	
+	public MappedStatement addMappedStatement(String id, SqlSource sqlSource, StatementType statementType,
+		SqlCommandType sqlCommandType, Integer fetchSize, Integer timeout, String parameterMap, Class<?> parameterType, 
+		String resultMap, Class<?> resultType, ResultSetType resultSetType, boolean flushCache, boolean useCache, 
+		boolean resultOrdered, KeyGenerator keyGenerator, String keyProperty, String keyColumn, String databaseId,
+		LanguageDriver lang, String resultSets, boolean dirtySelect, ParamNameResolver paramNameResolver) {
+		if (unresolvedCacheRef) {
+			throw new IncompleteElementException("Cache-ref not yet resolved");
+		}
+		
+		id = applyCurrentNamespace(id, false);
+		
+		MappedStatement.Builder statementBuilder = new MappedStatement.Builder(configuration, id, sqlSource, sqlCommandType)
+			.resource(resource).fetchSize(fetchSize).timeout(timeout).statementType(statementType)
+			.keyGenerator(keyGenerator).keyProperty(keyProperty).keyColumn(keyColumn).databaseId(databaseId).lang(lang)
+			.resultOrdered(resultOrdered).resultSets(resultSets)
+			.resultMaps(getStatementResultMaps(resultMap, resultType, id)).resultSetType(resultSetType)
+			.flushCacheRequired(flushCache).useCache(useCache).cache(currentCache).dirtySelect(dirtySelect)
+			.paramNameResolver(paramNameResolver);
+		
+		ParameterMap statementParameterMap = getStatementParameterMap(parameterMap, parameterType, id);
+		if (statementParameterMap != null) {
+			statementBuilder.parameterMap(statementParameterMap);
+		}
+		
+		MappedStatement statement = statementBuilder.build();
+		configuration.addMappedStatement(statement);
+		return statement;
+	}
+	public MappedStatement addMappedStatement(String id, SqlSource sqlSource, StatementType statementType,
+	    SqlCommandType sqlCommandType, Integer fetchSize, Integer timeout, String parameterMap, Class<?> parameterType,
+	    String resultMap, Class<?> resultType, ResultSetType resultSetType, boolean flushCache, boolean useCache,
+	    boolean resultOrdered, KeyGenerator keyGenerator, String keyProperty, String keyColumn, String databaseId,
+	    LanguageDriver lang, String resultSets) {
+	    return addMappedStatement(id, sqlSource, statementType, sqlCommandType, fetchSize, timeout, parameterMap,
+	        parameterType, resultMap, resultType, resultSetType, flushCache, useCache, resultOrdered, keyGenerator,
+	        keyProperty, keyColumn, databaseId, lang, null, false, null);
+	}
+
+	public MappedStatement addMappedStatement(String id, SqlSource sqlSource, StatementType statementType,
+		SqlCommandType sqlCommandType, Integer fetchSize, Integer timeout, String parameterMap, Class<?> parameterType,
+		String resultMap, Class<?> resultType, ResultSetType resultSetType, boolean flushCache, boolean useCache,
+		boolean resultOrdered, KeyGenerator keyGenerator, String keyProperty, String keyColumn, String databaseId,
+		LanguageDriver lang) {
+    return addMappedStatement(id, sqlSource, statementType, sqlCommandType, fetchSize, timeout, parameterMap,
+        parameterType, resultMap, resultType, resultSetType, flushCache, useCache, resultOrdered, keyGenerator,
+        keyProperty, keyColumn, databaseId, lang, null);
+	}
+  
+	private <T> T valueOrDefault(T value, T defaultValue) {
+		return value == null ? defaultValue : value;
+	}
+  
+	private ParameterMap getStatementParameterMap(String parameterMapName, Class<?> parameterTypeClass,
+		String statementId) {
+		parameterMapName = applyCurrentNamespace(parameterMapName, true);
+		ParameterMap parameterMap = null;
+		if (parameterMapName != null) {
+			try {
+				parameterMap = configuration.getParameterMap(parameterMapName);
+			} catch (IllegalArgumentException e) {
+			  throw new IncompleteElementException("Could not find parameter map " + parameterMapName, e);
+			}
+		} else if (parameterTypeClass != null) {
+		List<ParameterMapping> parameterMappings = new ArrayList<>();
+		parameterMap = new ParameterMap.Builder(configuration, statementId + "-Inline", parameterTypeClass,
+			parameterMappings).build();
+		}
+		return parameterMap;
+	}
+	
+	private List<ResultMap> getStatementResultMaps(String resultMap, Class<?> resultType, String statementId) {
+		resultMap = applyCurrentNamespace(resultMap, true);
+		
+		List<ResultMap> resultMaps = new ArrayList<>();
+		if (resultMap != null) {
+			String[] resultMapNames = resultMap.split(",");
+			for (String resultMapName : resultMapNames) {
+				try {
+					resultMaps.add(configuration.getResultMap(resultMapName.trim()));
+				} catch (IllegalArgumentException e) {
+					throw new IncompleteElementException(
+						"Could not find result map '" + resultMapName + "' referenced from '" + statementId + "'", e);
+				}
+			}
+		} else if (resultType != null) {
+			ResultMap inlineResultMap = new ResultMap.Builder(configuration, statementId + "-Inline", resultType, 
+				new ArrayList<>(), null).build();
+			resultMaps.add(inlineResultMap);
+		}
+		return resultMaps;
+	}
+	
+	public ResultMapping buildResultMapping(Class<?> resultType, String property, String column, Class<?> javaType,
+		JdbcType jdbcType, String nestedSelect, String nestedResultMap, String notNullColumn, String columnPrefix, 
+		Class<? extends TypeHandler<?>> typeHandler, List<ResultFlag> flags, String resultSet, String foreignColumn,
+		boolean lazy) {
+		Entry<Type, Class<?>> setterType = resolveSetterType(resultType, property, javaType);
+		TypeHandler<?> typeHandlerInstance = resolveTypeHandler(setterType.getKey(), jdbcType, typeHandler);
+		List<ResultMapping> composites;
+		if ((nestedSelect == null || nestedSelect.isEmpty()) && (foreignColumn == null || foreignColumn.isEmpty())) {
+			composites = Collections.emptyList();
+		} else {
+			composites = parseCompositeColumnName(column);
+		}
+		return new ResultMapping.Builder(configuration, property, column, setterType.getValue()).jdbcType(jdbcType)
+			.nestedQueryId(applyCurrentNamespace(nestedSelect, true))
+			.nestedResultMapId(applyCurrentNamespace(nestedResultMap, true)).resultSet(resultSet)
+			.typeHandler(typeHandlerInstance).flags(flags == null ? new ArrayList<>() : flags)
+			.composites(composites).notNullColumns(parseMultipleColumnNames(notNullColumn)).columnPrefix(columnPrefix)
+			.foreignColumn(foreignColumn).lazy(lazy).build();
+	}
+	
+	public ResultMapping buildResultMapping(Class<?> resultType, String property, String column, Class<?> javaType,
+		JdbcType jdbcType, String nestedSelect, String nestedResultMap, String notNullColumn, String columnPrefix, 
+		Class<? extends TypeHandler<?>> typeHandler, List<ResultFlag> flags) {
+		return buildResultMapping(resultType, property, column, javaType, jdbcType, nestedSelect, nestedResultMap,
+			notNullColumn, columnPrefix, typeHandler, flags, null, null, configuration.isLazyLoadingEnabled());
+	}
+	
+	private Set<String> parseMultipleColumnNames(String columnName) {
+		Set<String> columns = new HashSet<>();
+		if (columnName != null) {
+			if (columnName.indexOf(',') > -1) {
+				StringTokenizer parser = new StringTokenizer(columnName, "{}, ", false);
+				while (parser.hasMoreTokens()) {
+					String column = parser.nextToken();
+					columns.add(column);
+				}
+			} else {
+				columns.add(columnName);
+			}
+		}
+		return columns;
+	}
+	
+	private List<ResultMapping> parseCompositeColumnName(String columnName) {
+		List<ResultMapping> composites = new ArrayList<>();
+		if (columnName != null && (columnName.indexOf('=') > -1 || columnName.indexOf(',') > -1)) {
+			StringTokenizer parser = new StringTokenizer(columnName, "{}=, ", false);
+			while (parser.hasMoreTokens()) {
+				String property = parser.nextToken();
+				String column = parser.nextToken();
+				ResultMapping complexResultMapping = new ResultMapping.Builder(configuration, property, column, 
+					(TypeHandler<?>) null).build();
+				composites.add(complexResultMapping);
+			}
+		}
+		return composites;
+	}
+	
+	
+	private Entry<Type, Class<?>> resolveSetterType(Class<?> resultType, String property, Class<?> javaType) {
+		if (javaType != null) {
+			return Map.entry(javaType, javaType);
+		}
+		if (property != null) {
+			MetaClass metaResultType = MetaClass.forClass(resultType, configuration.getRelectorFactory());
+			try {
+				return metaResultType.getGenericSetterType(property);
+			} catch (Exception e) {
+				// Not all property types are resolvable
+			}
+		}
+		return Map.entry(Object.class, Object.class);
+	}
+	
+	private Class<?> resolveParameterJavaType(Class<?> resultType, String property, Class<?> javaType,
+		JdbcType jdbcType) {
+		if (javaType == null) {
+			if (JdbcType.CURSOR.equals(jdbcType)) {
+				javaType = ResultSet.class;
+			} else if (Map.class.isAssignableFrom(resultType)) {
+				javaType = Object.class;
+			} else {
+				MetaClass metaResultType = MetaClass.forClass(resultType, configuration.getReflectorFactory());
+				javaType = metaResultType.getGetterType(property);
+			}
+		}
+		if (javaType == null) {
+			javaType = Object.class;
+		}
+		return javaType;
+	}
 }
  
