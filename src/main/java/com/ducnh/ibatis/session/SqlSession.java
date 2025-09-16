@@ -7,6 +7,7 @@ import java.util.Map;
 
 import com.ducnh.ibatis.cursor.Cursor;
 
+@SuppressWarnings("rawtypes")
 public interface SqlSession extends Closeable {
 	<T> T selectOne(String statement);
 	<T> T selectOne(String statement, Object parameter);

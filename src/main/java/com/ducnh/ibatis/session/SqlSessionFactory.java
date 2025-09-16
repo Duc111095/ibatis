@@ -2,6 +2,7 @@ package com.ducnh.ibatis.session;
 
 import java.sql.Connection;
 
+
 public interface SqlSessionFactory {
 	
 	SqlSession openSession();

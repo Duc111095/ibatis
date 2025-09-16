@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.ducnh.ibatis.cache.Cache;
 import com.ducnh.ibatis.logging.Log;
+import com.ducnh.ibatis.reflection.ParamNameResolver;
 import com.ducnh.ibatis.session.Configuration;
 
 public final class MappedStatement {
