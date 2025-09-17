@@ -22,6 +22,8 @@ public @interface SelectProvider {
 	
 	String databaseId() default "";
 	
+	boolean affectData() default false;
+	
 	@Documented
 	@Retention(RetentionPolicy.RUNTIME)
 	@Target(ElementType.METHOD)
