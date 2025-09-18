@@ -23,7 +23,7 @@ public @interface SelectKey {
 	
 	boolean before();
 	
-	Class<?> returnType();
+	Class<?> resultType();
 	
 	StatementType statementType() default StatementType.PREPARED;
 	

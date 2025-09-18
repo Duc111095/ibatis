@@ -32,7 +32,7 @@ public @interface Arg {
 	
 	JdbcType jdbcType() default JdbcType.UNDEFINED;
 	
-	Class<? extends TypeHandler> typeHanlder() default UnknownTypeHandler.class;
+	Class<? extends TypeHandler> typeHandler() default UnknownTypeHandler.class;
 	
 	String select() default "";
 	
