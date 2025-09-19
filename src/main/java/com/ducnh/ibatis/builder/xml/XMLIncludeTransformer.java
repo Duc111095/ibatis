@@ -1,13 +1,19 @@
 package com.ducnh.ibatis.builder.xml;
 
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
 
+import com.ducnh.ibatis.builder.BuilderException;
+import com.ducnh.ibatis.builder.IncompleteElementException;
 import com.ducnh.ibatis.builder.MapperBuilderAssistant;
 import com.ducnh.ibatis.parsing.PropertyParser;
+import com.ducnh.ibatis.parsing.XNode;
 import com.ducnh.ibatis.session.Configuration;
 
 public class XMLIncludeTransformer {
@@ -49,6 +55,55 @@ public class XMLIncludeTransformer {
 					attr.setNodeValue(PropertyParser.parse(attr.getNodeValue(), variablesContext));
 				}
 			}
+			NodeList children = source.getChildNodes();
+			for (int i = 0; i < children.getLength(); i++) {
+				applyIncludes(children.item(i), variablesContext, included);
+			}
+		} else if (included && (source.getNodeType() == Node.TEXT_NODE || source.getNodeType() == Node.CDATA_SECTION_NODE) 
+			&& !variablesContext.isEmpty()) {
+			// replace variables in text node
+			source.setNodeValue(PropertyParser.parse(source.getNodeValue(), variablesContext));
 		}
+	}
+	
+	private Node findSqlFragment(String refid, Properties variables) {
+		refid = PropertyParser.parse(refid, variables);
+		refid = builderAssistant.applyCurrentNamespace(refid, true);
+		try {
+			XNode nodeToInclude = configuration.getSqlFragments().get(refid);
+			return nodeToInclude.getNode().cloneNode(true);
+		} catch (IllegalArgumentException e) {
+			throw new IncompleteElementException("Could not find SQL statement to include with refid '" + refid + "'", e);
+		}
+	}
+	
+	private String getStringAttribute(Node node, String name) {
+		return node.getAttributes().getNamedItem(name).getNodeValue();
+	}
+	
+	private Properties getVariablesContext(Node node, Properties inheritedVariablesContext) {
+		Map<String, String> declaredProperties = null;
+		NodeList children = node.getChildNodes();
+		for (int i = 0; i < children.getLength(); i++) {
+			Node n = children.item(i);
+			if (n.getNodeType() == Node.ELEMENT_NODE) {
+				String name = getStringAttribute(n ,"name");
+				// Replace variables inside
+				String value = PropertyParser.parse(getStringAttribute(n , "value"), inheritedVariablesContext);
+				if (declaredProperties == null) {
+					declaredProperties = new HashMap<>();
+				}
+				if (declaredProperties.put(name, value) != null) {
+					throw new BuilderException("Variable " + name + " defined twice in the same include definition");
+				}
+			}
+		}
+		if (declaredProperties == null) {
+			return inheritedVariablesContext;
+		}
+		Properties newProperties = new Properties();
+		newProperties.putAll(inheritedVariablesContext);
+		newProperties.putAll(declaredProperties);
+		return newProperties;
 	}
 }
