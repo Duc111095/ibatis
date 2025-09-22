@@ -28,7 +28,7 @@ public class XMLStatementBuilder extends BaseBuilder{
 	private final Class<?> mapperClass;
 	
 	
-	public XMLStatementBuilder(Configuration configuration, MapperBuilderAssistant builderAssistant, XNodex context) {
+	public XMLStatementBuilder(Configuration configuration, MapperBuilderAssistant builderAssistant, XNode context) {
 		this(configuration, builderAssistant, context, null);
 	}
 	

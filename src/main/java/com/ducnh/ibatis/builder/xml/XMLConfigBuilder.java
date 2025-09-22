@@ -68,7 +68,7 @@ public class XMLConfigBuilder extends BaseBuilder{
 	
 	public XMLConfigBuilder(Class<? extends Configuration> configClass, InputStream inputStream, String environment,
 		Properties props) {
-		this(configClass, new XPathParser(inputStream, true, props, new XMLMapperEntityResolver(), environment, props));
+		this(configClass, new XPathParser(inputStream, true, props, new XMLMapperEntityResolver()), environment, props);
 	}
 	
 	private XMLConfigBuilder(Class<? extends Configuration> configClass, XPathParser parser, String environment,
@@ -77,7 +77,7 @@ public class XMLConfigBuilder extends BaseBuilder{
 		ErrorContext.instance().resource("SQL Mapper Configuration");
 		this.configuration.setVariables(props);
 		this.parsed = false;
-		this.enviroment = environment;
+		this.environment = environment;
 		this.parser = parser;
 	}
 	
