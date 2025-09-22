@@ -54,7 +54,7 @@ public class Resources {
 		return in;
 	}
 	
-	public static Properties getResourcesAsProperties(String resource) throws IOException {
+	public static Properties getResourceAsProperties(String resource) throws IOException {
 		Properties props = new Properties();
 		try (InputStream in = getResourceAsStream(resource)) {
 			props.load(in);

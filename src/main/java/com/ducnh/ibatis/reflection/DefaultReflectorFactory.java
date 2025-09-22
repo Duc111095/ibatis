@@ -8,7 +8,7 @@ public class DefaultReflectorFactory implements ReflectorFactory{
 	private boolean classCacheEnabled = true;
 	private final ConcurrentMap<Type, Reflector> reflectorMap = new ConcurrentHashMap<>();
 	
-	private DefaultReflectorFactory() {
+	public DefaultReflectorFactory() {
 		
 	}
 	
