@@ -268,7 +268,7 @@ public final class MappedStatement {
 		return dirtySelect;
 	}
 	
-	public ParamNameResolver getParamNameResoulver() {
+	public ParamNameResolver getParamNameResolver() {
 		return paramNameResolver;
 	}
 	

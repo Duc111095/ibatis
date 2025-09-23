@@ -248,7 +248,7 @@ public class XMLMapperBuilder extends BaseBuilder{
 			String property = resultMapNode.getStringAttribute("property");
 			if (property != null && enclosingType != null) {
 				MetaClass metaResultType = MetaClass.forClass(enclosingType, configuration.getReflectorFactory());
-				return metaResultType.getSetterType(property));
+				return metaResultType.getSetterType(property);
 			}
 		} else if ("case".equals(resultMapNode.getName()) && resultMapNode.getStringAttribute("resultMap") == null) {
 			return enclosingType;

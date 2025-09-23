@@ -36,6 +36,10 @@ public class BatchResult {
 		return parameterObjects.get(0);
 	}
 	
+	public List<Object> getParameterObjects() {
+		return parameterObjects;
+	}
+	
 	public int[] getUpdateCounts() {
 		return updateCounts;
 	}
