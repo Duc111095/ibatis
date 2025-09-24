@@ -11,6 +11,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import com.ducnh.ibatis.cache.CacheKey;
 import com.ducnh.ibatis.cache.impl.PerpetualCache;
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.statement.StatementUtil;
 import com.ducnh.ibatis.logging.Log;
 import com.ducnh.ibatis.logging.LogFactory;
 import com.ducnh.ibatis.logging.jdbc.ConnectionLogger;
