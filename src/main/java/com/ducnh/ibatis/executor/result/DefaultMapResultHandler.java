@@ -27,7 +27,6 @@ public class DefaultMapResultHandler<K, V> implements ResultHandler<V>{
 		this.mapKey = mapKey;
 	}
 	
-	
 	@SuppressWarnings("unchecked")
 	@Override
 	public void handleResult(ResultContext<? extends V> context) {
@@ -35,5 +34,9 @@ public class DefaultMapResultHandler<K, V> implements ResultHandler<V>{
 		final MetaObject mo = MetaObject.forObject(value, objectFactory, objectWrapperFactory, reflectorFactory);
 		final K key = (K) mo.getValue(mapKey);
 		mappedResults.put(key, value);
+	}
+	
+	public Map<K, V> getMappedResults() {
+		return mappedResults;
 	}
 }

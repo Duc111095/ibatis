@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
+import com.ducnh.ibatis.builder.annotation.MapperAnnotationBuilder;
 import com.ducnh.ibatis.io.ResolverUtil;
 import com.ducnh.ibatis.session.Configuration;
 import com.ducnh.ibatis.session.SqlSession;
