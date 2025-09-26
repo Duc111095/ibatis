@@ -1,19 +1,27 @@
 package com.ducnh.ibatis.executor.resultset;
 
+import java.lang.reflect.Constructor;
+import java.lang.reflect.Parameter;
 import java.lang.reflect.Type;
 import java.sql.CallableStatement;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Statement;
+import java.text.MessageFormat;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 import java.util.Set;
 
-
+import com.ducnh.ibatis.annotations.AutomapConstructor;
+import com.ducnh.ibatis.annotations.Param;
+import com.ducnh.ibatis.binding.MapperMethod.ParamMap;
 import com.ducnh.ibatis.cache.CacheKey;
 import com.ducnh.ibatis.cursor.Cursor;
 import com.ducnh.ibatis.cursor.defaults.DefaultCursor;
@@ -23,12 +31,15 @@ import com.ducnh.ibatis.executor.ExecutorException;
 import com.ducnh.ibatis.executor.parameter.ParameterHandler;
 import com.ducnh.ibatis.executor.result.DefaultResultContext;
 import com.ducnh.ibatis.executor.result.DefaultResultHandler;
+import com.ducnh.ibatis.executor.result.ResultMapException;
 import com.ducnh.ibatis.mapping.BoundSql;
+import com.ducnh.ibatis.mapping.Discriminator;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.ParameterMapping;
 import com.ducnh.ibatis.mapping.ParameterMode;
 import com.ducnh.ibatis.mapping.ResultMap;
 import com.ducnh.ibatis.mapping.ResultMapping;
+import com.ducnh.ibatis.reflection.MetaClass;
 import com.ducnh.ibatis.reflection.MetaObject;
 import com.ducnh.ibatis.reflection.ReflectorFactory;
 import com.ducnh.ibatis.reflection.factory.ObjectFactory;
@@ -685,5 +696,359 @@ public class DefaultResultSetHandler implements ResultSetHandler{
 		return resultObject;
 	}
 	
+	private Object createResultObject(ResultSetWrapper rsw, ResultMap resultMap, List<Class<?>> constructorArgTypes,
+		List<Object> constructorArgs, String columnPrefix, CacheKey parentRowKey) throws SQLException {
+		
+		final Class<?> resultType = resultMap.getType();
+		final MetaClass metaType = MetaClass.forClass(resultType, reflectorFactory);
+		final List<ResultMapping> constructorMappings = resultMap.getConstructorResultMappings();
+		if (hasTypeHandlerForResultObject(rsw, resultType)) {
+			return createPrimitiveResultObject(rsw, resultMap, columnPrefix);
+		}
+		if (!constructorMappings.isEmpty()) {
+			return createParameterizedResultObject(rsw, resultType, constructorMappings, constructorArgTypes, constructorArgs,
+				columnPrefix, resultMap.hasResultMapsUsingConstructorCollection(), parentRowKey);
+		} else if (resultType.isInterface() || metaType.hasDefaultConstructor()) {
+			return objectFactory.create(resultType);
+		} else if (shouldApplyAutomaticMappings(resultMap, false)) {
+			return createByConstructorSignature(rsw, resultMap, columnPrefix, resultType, constructorArgTypes, 
+				constructorArgs);
+		}
+		throw new ExecutorException("Do not know how to create an instance of " + resultType);
+ 	}
 	
+	Object createParameterizedResultObject(ResultSetWrapper rsw, Class<?> resultType,
+		List<ResultMapping> constructorMappings, List<Class<?>> constructorArgTypes, List<Object> constructorArgs,
+		String columnPrefix, boolean useCollectionConstructorInjection, CacheKey parentRowKey) {
+		boolean foundValues = false;
+		
+		for (ResultMapping constructorMapping : constructorMappings) {
+			final Class<?> parameterType = constructorMapping.getJavaType();
+			final String column = constructorMapping.getColumn();
+			final Object value;
+			try {
+				if (constructorMapping.getNestedQueryId() != null) {
+					value = getNestedQueryConstructorValue(rsw, constructorMapping, columnPrefix);
+				} else if (JdbcType.CURSOR.equals(constructorMapping.getJdbcType())) {
+					List<?> result = (List<?>) getNestedCursorValue(rsw, constructorMapping, columnPrefix).get(0);
+					if (objectFactory.isCollection(parameterType)) {
+						MetaObject collection = configuration.newMetaObject(objectFactory.create(parameterType));
+						collection.addAll((List<?>) result);
+						value = collection.getOriginalObject();
+					} else {
+						value = toSingObj(result);
+					}
+				} else if (constructorMapping.getNestedResultMapId() != null) {
+					final String constructorColumnPrefix = getColumnPrefix(columnPrefix, constructorMapping);
+					final ResultMap resultMap = resolveDiscriminatedResultMap(rsw,
+						configuration.getResultMap(constructorMapping.getNestedResultMapId()), constructorColumnPrefix);
+					value = getRowValue(rsw, resultMap, constructorColumnPrefix,
+						useCollectionConstructorInjection ? parentRowKey : null);
+				} else {
+					TypeHandler<?> typeHandler = constructorMapping.getTypeHandler();
+					if (typeHandler == null) {
+						typeHandler = typeHandlerRegistry.getTypeHandler(constructorMapping.getJavaType(), rsw.getJdbcType(column));
+					}
+					value = typeHandler.getResult(rsw.getResultSet(), prependPrefix(column, columnPrefix));
+				}
+			} catch (ResultMapException | SQLException e) {
+				throw new ExecutorException("Could not process result for mapping: " + constructorMapping);
+			}
+			
+			constructorArgTypes.add(parameterType);
+			constructorArgs.add(value);
+			
+			foundValues = value != null || foundValues;
+		}
+	
+		if (!foundValues) {
+			return null;
+		}
+		
+		if (useCollectionConstructorInjection) {
+			return new PendingConstructorCreation(resultType, constructorArgTypes, constructorArgs);
+		}
+		
+		return objectFactory.create(resultType, constructorArgTypes, constructorArgs);
+	}
+	
+	private Object createByConstructorSignature(ResultSetWrapper rsw, ResultMap resultMap, String columnPrefix, 
+		Class<?> resultType, List<Class<?>> constructorArgTypes, List<Object> constructorArgs) throws SQLException {
+		return applyConstructorAutomapping(rsw, resultMap, columnPrefix, resultType, constructorArgTypes, constructorArgs,
+			findConstructorForAutomapping(resultType, rsw).orElseThrow(() -> new ExecutorException(
+				"No constructor found in " + resultType.getName() + " matching " + rsw.getClassNames())));
+	} 
+
+	private Optional<Constructor<?>> findConstructorForAutomapping(final Class<?> resultType, ResultSetWrapper rsw) {
+		Constructor<?>[] constructors = resultType.getDeclaredConstructors();
+		if (constructors.length == 1) {
+			return Optional.of(constructors[0]);
+		}
+		Optional<Constructor<?>> annotated = Arrays.stream(constructors)
+				.filter(x -> x.isAnnotationPresent(AutomapConstructor.class)).reduce((x, y) -> {
+					throw new ExecutorException("@AutomapConstructor should be used in only one constructor.");
+				});
+		if (annotated.isPresent()) {
+			return annotated;
+		}
+		if (configuration.isArgNameBasedConstructorAutoMapping()) {
+			throw new ExecutorException(MessageFormat.format(
+				"'argNameBasedConstructorAutoMapping' is enabled and the class ''{0}'' has multiple constructors, so @AutomapConstructor must be added to one of the constructors.", 
+				resultType.getName()));
+		} else {
+			return Arrays.stream(constructors).filter(x -> findUsableConstructorByArgTypes(x, rsw.getJdbcTypes())).findAny();
+		}
+	}
+	
+	private boolean findUsableConstructorByArgTypes(final Constructor<?> constructor, final List<JdbcType> jdbcTypes) {
+		final Class<?>[] parameterTypes = constructor.getParameterTypes();
+		if (parameterTypes.length != jdbcTypes.size()) {
+			return false;
+		}
+		for (int i = 0; i < parameterTypes.length; i++) {
+			if (!typeHandlerRegistry.hasTypeHandler(parameterTypes[i], jdbcTypes.get(i))) {
+				return false;
+			}
+		}
+		return true;
+	}
+	
+	private Object applyConstructorAutomapping(ResultSetWrapper rsw, ResultMap resultMap, String columnPrefix,
+		Class<?> resultType, List<Class<?>> constructorArgTypes, List<Object> constructorArgs, Constructor<?> constructor) 
+		throws SQLException {
+		boolean foundValues = false;
+		if (configuration.isArgNameBasedConstructorAutoMapping()) {
+			foundValues = applyArgNamesBasedConstructorAutoMapping(rsw, resultMap, columnPrefix, constructorArgTypes,
+				constructorArgs, constructor, foundValues);
+		} else {
+			foundValues = applyColumnOrderBasedConstructorAutoMapping(rsw, constructorArgTypes, constructorArgs, constructor, 
+					foundValues);
+		}
+		
+		return foundValues || configuration.isReturnInstanceForEmptyRow()
+			? objectFactory.create(resultType, constructorArgTypes, constructorArgs) : null;
+	}
+
+	private boolean applyColumnOrderBasedConstructorAutomapping(ResultSetWrapper rsw, List<Class<?>> constructorArgTypes, 
+		List<Object> constructorArgs, Constructor<?> constructor, boolean foundValues) throws SQLException {
+		Class<?>[] parameterTypes = constructor.getParameterTypes();
+		
+		if (parameterTypes.length > rsw.getClassNames().size()) {
+			throw new ExecutorException(MessageFormat.format(
+				"Constructor auto-mapping of ''{0}'' failed. The constructor takes ''{1}'' arguments, but there are only ''{2}'' columns in the result set", 
+				constructor, parameterTypes.length, rsw.getClassNames().size()));
+		}
+		
+		for (int i = 0; i < parameterTypes.length; i++) {
+			Class<?> parameterType = parameterTypes[i];
+			String columnName = rsw.getColumnNames().get(i);
+			TypeHandler<?> typeHandler = rsw.getTypeHandler(parameterType, columnName);
+			Object value = typeHandler.getResult(rsw.getResultSet(), columnName);
+			constructorArgTypes.add(parameterType);
+			constructorArgs.add(value);
+			foundValues = value != null || foundValues;
+		}
+		return foundValues;
+	}
+	
+	private boolean applyArgNameBasedConstructorAutoMapping(ResultSetWrapper rsw, ResultMap resultMap, 
+		String columnPrefix, List<Class<?>> constructorArgTypes, List<Object> constructorArgs, Constructor<?> constructor,
+		boolean foundValues) throws SQLException {
+		List<String> missingArgs = null;
+		Parameter[] params = constructor.getParameters();
+		for (Parameter param : params) {
+			boolean columnNotFound = true;
+			Param paramAnno = param.getAnnotation(Param.class);
+			String paramName = paramAnno == null ? param.getName() : paramAnno.value();
+			for (String columnName : rsw.getColumnNames()) {
+				if (columnMatchesParam(columnName, paramName, columnPrefix)) {
+					Class<?> paramType = param.getType();
+					TypeHandler<?> typeHandler = rsw.getTypeHandler(paramType, columnName);
+					Object value = typeHandler.getResult(rsw.getResultSet(), columnName);
+					constructorArgTypes.add(paramType);
+					constructorArgs.add(value);
+					final String mapKey = resultMap.getId() + ":" + columnPrefix;
+					if (!autoMappingsCache.containsKey(mapKey)) {
+						constructorAutoMappingColumns.computeIfAbsent(mapKey, k -> new ArrayList<>()).add(columnName);
+					}
+					columnNotFound = false;
+					foundValues = value != null || foundValues;
+				}
+			}
+			if (columnNotFound) {
+				if (missingArgs == null) {
+					missingArgs = new ArrayList<>();
+				}
+				missingArgs.add(paramName);
+			}
+		}
+		if (foundValues && constructorArgs.size() < params.length) {
+			throw new ExecutorException(MessageFormat.format(
+				"Constructor auto-mapping of ''{1}'' failed because ''{0}'' were not found in the result set; "
+				+ "Available columns are ''{2}'' and mapUnderscoreToCamelCase is ''{3}''.", 
+				missingArgs, constructor, rsw.getColumnNames(), configuration.isMapUnderscoreToCamelCase()));
+		}
+		return foundValues;
+	}
+	
+	private boolean columnMatchesParam(String columnName, String paramName, String columnPrefix) {
+		if (columnPrefix != null) {
+			if (!columnName.toUpperCase(Locale.ENGLISH).startsWith(columnPrefix)) {
+				return false;
+			}
+			columnName = columnName.substring(columnPrefix.length());
+		}
+		return paramName
+			.equalsIgnoreCase(configuration.isMapUnderscoreToCamelCase() ? columnName.replace("_", "") : columnName);
+	}
+	
+	private Object createPrimitiveResultObject(ResultSetWrapper rsw, ResultMap resultMap, String columnPrefix)
+		throws SQLException {
+		final Class<?> resultType = resultMap.getType();
+		final String columnName;
+		if (!resultMap.getResultMappings().isEmpty()) {
+			final List<ResultMapping> resultMappingList = resultMap.getResultMappings();
+			final ResultMapping mapping = resultMappingList.get(0);
+			columnName = prependPrefix(mapping.getColumn(), columnPrefix);
+		} else {
+			columnName = rsw.getColumnNames().get(0);
+		}
+		final TypeHandler<?> typeHandler = rsw.getTypeHandler(resultType, columnName);
+		return typeHandler.getResult(rsw.getResultSet(), columnName);
+	}
+	
+	private Object getNestedQueryConstructorValue(ResultSetWrapper rsw, ResultMapping constructorMapping,
+		String columnPrefix) throws SQLException {
+		final String nestedQueryId = constructorMapping.getNestedQueryId();
+		final MappedStatement nestedQuery = configuration.getMappedStatement(nestedQueryId);
+		final Class<?> nestedQueryParameterType = nestedQuery.getParameterMap().getType();
+		final Object nestedQueryParameterObject = prepareParameterForNestedQuery(rsw, constructorMapping, 
+			nestedQueryParameterType, columnPrefix);
+		Object value = null;
+		if (nestedQueryParameterObject != null) {
+			final BoundSql nestedBoundSql = nestedQuery.getBoundSql(nestedQueryParameterObject);
+			final CacheKey key = executor.createCacheKey(nestedQuery, nestedQueryParameterObject, 
+					RowBounds.DEFAULT, nestedBoundSql);
+			final Class<?> targetType = constructorMapping.getJavaType();
+			final ResultLoader resultLoader = new ResultLoader(configuration, executor, nestedQuery,
+				nestedQueryParameterObject, targetType, key, nestedBoundSql);
+			value = resultLoader.loadResult();
+		}
+		return value;
+	}
+	
+	private Object getNestedQueryMappingValue(ResultSetWrapper rsw, MetaObject metaResultObject, 
+		ResultMapping propertyMapping, ResultLoaderMap lazyLoader, String columnPrefix) throws SQLException {
+		final String nestedQueryId = propertyMapping.getNestedQueryId();
+		final String property = propertyMapping.getProperty();
+		final MappedStatement nestedQuery = configuration.getMappedStatement(nestedQueryId);
+		final Class<?> nestedQueryParameterType = nestedQuery.getParameterMap().getType();
+		final Object nestedQueryParameterObject = prepareParameterForNestedQuery(rsw, propertyMapping, 
+			nestedQueryParameterType, columnPrefix);
+		Object value = null;
+		if (nestedQueryParameterObject != null) {
+			final BoundSql nestedBoundSql = nestedQuery.getBoundSql(nestedQueryParameterObject);
+			final CacheKey key = executor.createCacheKey(nestedQuery, nestedQueryParameterObject, RowBounds.DEFAULT, 
+				nestedBoundSql);
+			final Class<?> targetType = propertyMapping.getJavaType();
+			if (executor.isCached(nestedQuery, key)) {
+				executor.deferLoad(nestedQuery, metaResultObject, property, key, targetType);
+				value = DEFERRED;
+			} else {
+				final ResultLoader resultLoader = new ResultLoader(configuration, executor, nestedQuery, 
+					nestedQueryParameterObject, targetType, key, nestedBoundSql);
+				if (propertyMapping.isLazy()) {
+					lazyLoader.addLoader(property, metaResultObject, resultLoader);
+					value = DEFERRED;
+				} else {
+					value = resultLoader.loadResult();
+				}
+			}
+		}
+		return value;
+	}
+	
+	private Object prepareParameterForNestedQuery(ResultSetWrapper rsw, ResultMapping resultMapping, 
+		Class<?> parameterType, String columnPrefix) throws SQLException {
+		if (resultMapping.isCompositeResult()) {
+			return prepareCompositeKeyParameter(rsw, resultMapping, parameterType, columnPrefix);
+		}
+		return prepareSimpleKeyParameter(rsw, resultMapping, parameterType, columnPrefix);
+	}
+	
+	private Object prepareSimpleKeyParameter(ResultSetWrapper rsw, ResultMapping resultMapping, Class<?> parameterType, 
+		String columnPrefix) throws SQLException {
+		final String columnName = prependPrefix(resultMapping.getColumn(), columnPrefix);
+		final TypeHandler<?> typeHandler = rsw.getTypeHandler(null, columnName);
+		return typeHandler.getResult(rsw.getResultSet(), columnName);
+	}
+	
+	private Object prepareCompositeKeyParameter(ResultSetWrapper rsw, ResultMapping resultMapping, Class<?> parameterType,
+		String columnPrefix) throws SQLException {
+		final Object parameterObject = instantiateParameterObject(parameterType);
+		final MetaObject metaObject = configuration.newMetaObject(parameterObject);
+		boolean foundValues = false;
+		for (ResultMapping innerResultMapping : resultMapping.getComposites()) {
+			final String columnName = prependPrefix(innerResultMapping.getColumn(), columnPrefix);
+			final TypeHandler<?> typeHandler = rsw
+				.getTypeHandler(metaObject.getGenericSetterType(innerResultMapping.getProperty()).getKey(), columnName);
+			final Object propValue = typeHandler.getResult(rsw.getResultSet(), columnName);
+			if (propValue != null) {
+				metaObject.setValue(innerResultMapping.getProperty(), propValue);
+				foundValues = true;
+			}
+		}
+		return foundValues ? parameterObject : null;
+	}
+	
+	private Object instantiateParameterObject(Class<?> parameterType) {
+		if (parameterType == null) {
+			return new HashMap<>();
+		}
+		if (ParamMap.class.equals(parameterType)) {
+			return new HashMap<>();
+		} else {
+			return objectFactory.create(parameterType);
+		}
+	}
+	
+	public ResultMap resolveDiscriminatedResultMap(ResultSetWrapper rsw, ResultMap resultMap, String columnPrefix)
+		throws SQLException {
+		Set<String> pastDiscriminators = new HashSet<>();
+		Discriminator discriminator = resultMap.getDiscriminator();
+		while (discriminator != null) {
+			final Object value = getDiscriminatorValue(rsw, discriminator, columnPrefix);
+			final String discriminatedMapId = discriminator.getMapIdFor(String.valueOf(value));
+			if (!configuration.hasResultMap(discriminatedMapId)) {
+				break;
+			}
+			resultMap = configuration.getResultMap(discriminatedMapId);
+			Discriminator lastDiscriminator = discriminator;
+			discriminator = resultMap.getDiscriminator();
+			if (discriminator == lastDiscriminator || !pastDiscriminators.add(discriminatedMapId)) {
+				break;
+			}
+		}
+		return resultMap;
+	}
+	
+	private Object getDiscriminatorValue(ResultSetWrapper rsw, Discriminator discriminator, String columnPrefix) 
+		throws SQLException {
+		final ResultMapping resultMapping = discriminator.getResultMapping();
+		String column = prependPrefix(resultMapping.getColumn(), columnPrefix);
+		TypeHandler<?> typeHandler = resultMapping.getTypeHandler();
+		if (typeHandler == null) {
+			typeHandler = typeHandlerRegistry.getTypeHandler(resultMapping.getJavaType(), rsw.getJdbcType(column));
+		}
+		return typeHandler.getResult(rsw.getResultSet(), column);
+	}
+	
+	private String prependPrefix(String columnName, String prefix) {
+		if (columnName == null || columnName.length() == 0 || prefix == null || prefix.length() == 0) {
+			return columnName;
+		}
+		return prefix + columnName;
+	}
 } 
+
+
