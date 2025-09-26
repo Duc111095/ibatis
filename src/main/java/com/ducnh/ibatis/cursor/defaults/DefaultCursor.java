@@ -6,6 +6,8 @@ import java.util.Iterator;
 import java.util.NoSuchElementException;
 
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.resultset.DefaultResultSetHandler;
+import com.ducnh.ibatis.executor.resultset.ResultSetWrapper;
 import com.ducnh.ibatis.mapping.ResultMap;
 import com.ducnh.ibatis.session.ResultContext;
 import com.ducnh.ibatis.session.ResultHandler;
@@ -34,7 +36,7 @@ public class DefaultCursor<T> implements Cursor<T> {
 	
 	public DefaultCursor(DefaultResultSetHandler resultHandler, ResultMap resultMap, ResultSetWrapper rsw,
 		RowBounds rowBounds) {
-		this.resultSetHandler = resultSetHandler;
+		this.resultSetHandler = resultHandler;
 		this.resultMap = resultMap;
 		this.rsw = rsw;
 		this.rowBounds = rowBounds;
@@ -89,6 +91,7 @@ public class DefaultCursor<T> implements Cursor<T> {
 		while (objectWrapperResultHandler.fetched && indexWithRowBound < rowBounds.getOffset()) {
 			result = fetchNextObjectFromDatabase();
 		}
+		return result;
 	}
 	
 	protected T fetchNextObjectFromDatabase() {
