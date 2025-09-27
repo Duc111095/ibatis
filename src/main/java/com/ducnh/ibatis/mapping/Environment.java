@@ -2,6 +2,8 @@ package com.ducnh.ibatis.mapping;
 
 import javax.sql.DataSource;
 
+import com.ducnh.ibatis.transaction.TransactionFactory;
+
 public final class Environment {
 	private final String id;
 	private final TransactionFactory transactionFactory;
