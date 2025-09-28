@@ -48,7 +48,7 @@ public class ResultLoader {
 		this.creatorThreadId = Thread.currentThread().getId();
 	}
 	
-	private Object loadResult() throws SQLException {
+	public Object loadResult() throws SQLException {
 		List<Object> list = selectList();
 		resultObject = resultExtractor.extractObjectFromList(list, targetType);
 		return resultObject;
