@@ -1,8 +1,21 @@
 package com.ducnh.ibatis.scripting.xmltags;
 
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.StringJoiner;
 
+import com.ducnh.ibatis.builder.ParameterMappingTokenHandler;
+import com.ducnh.ibatis.mapping.ParameterMapping;
+import com.ducnh.ibatis.parsing.GenericTokenParser;
+import com.ducnh.ibatis.reflection.MetaObject;
+import com.ducnh.ibatis.reflection.ParamNameResolver;
+import com.ducnh.ibatis.session.Configuration;
+
+import ognl.OgnlContext;
 import ognl.OgnlRuntime;
+import ognl.PropertyAccessor;
 
 public class DynamicContext {
 
@@ -13,7 +26,154 @@ public class DynamicContext {
 		OgnlRuntime.setPropertyAccessor(ContextMap.class, new ContextAccessor());
 	}
 	
+	protected final ContextMap bindings;
+	private final StringJoiner sqlBuilder = new StringJoiner(" ");
+	private final Configuration configuration;
+	private final Object parameterObject;
+	private final Class<?> parameterType;
+	private final ParamNameResolver paramNameResolver;
+	private final boolean paramExists;
+	
+	private GenericTokenParser tokenParser;
+	private ParameterMappingTokenHandler tokenHandler;
+	
+	public DynamicContext(Configuration configuration, Class<?> parameterType, ParamNameResolver paramNameResolver) {
+		this(configuration, null, parameterType, paramNameResolver, false);
+	} 
+	
+	public DynamicContext(Configuration configuration, Object parameterObject, Class<?> parameterType,
+		ParamNameResolver paramNameResolver, boolean paramExists) {
+		if (parameterObject == null || parameterObject instanceof Map) {
+			bindings = new ContextMap(null, false);
+		} else {
+			MetaObject metaObject = configuration.newMetaObject(parameterObject);
+			boolean existsTypeHandler = configuration.getTypeHandlerRegistry().hasTypeHandler(parameterObject.getClass());
+			bindings = new ContextMap(metaObject, existsTypeHandler);
+		}
+		bindings.put(PARAMETER_OBJECT_KEY, parameterObject);
+		bindings.put(DATABASE_ID_KEY, configuration.getDatabaseId());
+		this.configuration = configuration;
+		this.parameterObject = parameterObject;
+		this.paramExists = paramExists;
+		this.parameterType = parameterType;
+		this.paramNameResolver = paramNameResolver;
+	}
+	
+	public Map<String, Object> getBindings() {
+		return bindings;
+	}
+	
+	public void bind(String name, Object value) {
+		bindings.put(name, value);
+	}
+	
+	public void appendSql(String sql) {
+		sqlBuilder.add(sql);
+	}
+	
+	public String getSql() {
+		return sqlBuilder.toString().trim();
+	}
+	
+	private void initTokenParser(List<ParameterMapping> parameterMappings) {
+		if (tokenParser == null) {
+			tokenHandler = new ParameterMappingTokenHandler(parameterMappings != null ? parameterMappings : new ArrayList<>(),
+				configuration, parameterObject, parameterType, bindings, paramNameResolver, paramExists);
+			tokenParser = new GenericTokenParser("#{", "}", tokenHandler);
+		}
+	}
+	
+	public List<ParameterMapping> getParameterMappings() {
+		initTokenParser(null);
+		return tokenHandler.getParameterMappings();
+	}
+	
+	protected String parseParam(String sql) {
+		initTokenParser(getParameterMappings());
+		return tokenParser.parse(sql);
+	}
+	
+	protected Object getParameterObject() {
+		return parameterObject;
+	}
+	
+	protected Class<?> getParameterType() {
+		return parameterType;
+	}
+	
+	protected ParamNameResolver getParamNameResolver() {
+		return paramNameResolver;
+	}
+	
+	protected boolean isParamExists() { 
+		return paramExists;
+	}
+	
+	
 	static class ContextMap extends HashMap<String, Object> {
-		private static final long serialVersionUID = 
+		private static final long serialVersionUID = 2977601501966151582L;
+		private final MetaObject parameterMetaObject;
+		private final boolean fallbackParameterObject;
+		
+		public ContextMap(MetaObject parameterMetaObject, boolean fallbackParameterObject) {
+			this.parameterMetaObject = parameterMetaObject;
+			this.fallbackParameterObject = fallbackParameterObject;
+		}
+		
+		@Override
+		public Object get(Object key) {
+			String strKey = (String) key;
+			if (super.containsKey(strKey)) {
+				return super.get(strKey);
+			}
+			
+			if (parameterMetaObject == null) {
+				return null;
+			}
+			
+			if (fallbackParameterObject && !parameterMetaObject.hasGetter(strKey)) {
+				return parameterMetaObject.getOriginalObject();
+			}
+			
+			return parameterMetaObject.getValue(strKey);
+		}
+	}
+	
+	static class ContextAccessor implements PropertyAccessor {
+		
+		@SuppressWarnings("rawtypes")
+		@Override
+		public Object getProperty(OgnlContext context, Object target, Object name) {
+			Map map = (Map) target;
+			
+			Object result = map.get(name);
+			if (map.containsKey(name) || result != null) {
+				return result;
+			}
+			
+			Object parameterObject = map.get(PARAMETER_OBJECT_KEY);
+			if (parameterObject instanceof Map) {
+				return ((Map) parameterObject).get(name);
+			}
+			
+			return null;
+		}
+		
+		@SuppressWarnings("unchecked")
+		@Override
+		public void setProperty(OgnlContext context, Object target, Object name, Object value ) {
+			Map<Object, Object> map = (Map<Object, Object>) target;
+			map.put(name, value);
+		}
+		
+		@Override
+		public String getSourceAccessor(OgnlContext arg0, Object arg1, Object arg2) {
+			return null;
+		}
+		
+		@Override
+		public String getSourceSetter(OgnlContext arg0, Object arg1, Object arg2) {
+			return null;
+		}
 	}
 }
