@@ -10,6 +10,7 @@ import java.util.List;
 import com.ducnh.ibatis.cursor.Cursor;
 import com.ducnh.ibatis.executor.Executor;
 import com.ducnh.ibatis.executor.ExecutorException;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.ParameterMapping;
@@ -34,7 +35,7 @@ public class CallableStatementHandler extends BaseStatementHandler{
 		Object parameterObject = boundSql.getParameterObject();
 		KeyGenerator keyGenerator = mappedStatement.getKeyGenerator();
 		keyGenerator.processAfter(executor, mappedStatement, cs, parameterObject);
-		resultSetHandler.handleOutputParameter(cs);
+		resultSetHandler.handleOutputParameters(cs);
 		return rows;
 	}
 	

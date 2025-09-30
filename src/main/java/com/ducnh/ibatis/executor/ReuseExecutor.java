@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.statement.StatementHandler;
 import com.ducnh.ibatis.logging.Log;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;

@@ -7,6 +7,7 @@ import java.util.Collections;
 import java.util.List;
 
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.statement.StatementHandler;
 import com.ducnh.ibatis.logging.Log;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;
@@ -27,7 +28,7 @@ public class SimpleExecutor extends BaseExecutor{
 		try {
 			Configuration configuration = ms.getConfiguration();
 			StatementHandler handler = configuration.newStatementHandler(this, ms, parameter, RowBounds.DEFAULT, null, null);
-			stmt = preparrStatement(handler, ms.getStatementLog());
+			stmt = prepareStatement(handler, ms.getStatementLog());
 			return handler.update(stmt);
 		} finally {
 			closeStatement(stmt);

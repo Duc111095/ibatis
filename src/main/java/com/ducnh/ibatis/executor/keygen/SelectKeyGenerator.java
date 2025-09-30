@@ -1,6 +1,6 @@
 package com.ducnh.ibatis.executor.keygen;
 
-import java.beans.Statement;
+import java.sql.Statement;
 import java.util.List;
 
 import com.ducnh.ibatis.executor.Executor;
@@ -8,6 +8,7 @@ import com.ducnh.ibatis.executor.ExecutorException;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.reflection.MetaObject;
 import com.ducnh.ibatis.session.Configuration;
+import com.ducnh.ibatis.session.ExecutorType;
 import com.ducnh.ibatis.session.RowBounds;
 
 public class SelectKeyGenerator implements KeyGenerator{

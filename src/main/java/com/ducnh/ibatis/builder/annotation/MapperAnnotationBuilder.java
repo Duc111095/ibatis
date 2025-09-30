@@ -50,10 +50,16 @@ import com.ducnh.ibatis.builder.CacheRefResolver;
 import com.ducnh.ibatis.builder.IncompleteElementException;
 import com.ducnh.ibatis.builder.MapperBuilderAssistant;
 import com.ducnh.ibatis.builder.ResultMappingConstructorResolver;
+import com.ducnh.ibatis.builder.xml.XMLMapperBuilder;
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.keygen.Jdbc3KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.NoKeyGenerator;
+import com.ducnh.ibatis.executor.keygen.SelectKeyGenerator;
 import com.ducnh.ibatis.io.Resources;
 import com.ducnh.ibatis.mapping.Discriminator;
 import com.ducnh.ibatis.mapping.FetchType;
+import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.ResultFlag;
 import com.ducnh.ibatis.mapping.ResultMapping;
 import com.ducnh.ibatis.mapping.ResultSetType;
@@ -63,6 +69,7 @@ import com.ducnh.ibatis.mapping.StatementType;
 import com.ducnh.ibatis.parsing.PropertyParser;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
 import com.ducnh.ibatis.reflection.TypeParameterResolver;
+import com.ducnh.ibatis.scripting.LanguageDriver;
 import com.ducnh.ibatis.session.Configuration;
 import com.ducnh.ibatis.session.ResultHandler;
 import com.ducnh.ibatis.session.RowBounds;
@@ -134,7 +141,7 @@ public class MapperAnnotationBuilder {
 				}
 			}
 			if (inputStream != null) {
-				XMLMapperBuilder xmlParser = new XmlMapperBuilder(inputStream, assistant.getConfiguration(), xmlResource, 
+				XMLMapperBuilder xmlParser = new XMLMapperBuilder(inputStream, assistant.getConfiguration(), xmlResource, 
 					configuration.getSqlFragments(), type);
 				xmlParser.parse();
 			}
@@ -184,7 +191,7 @@ public class MapperAnnotationBuilder {
 	}
 	
 	private String parseResultMap(Method method) {
-		Class<?> returnType = getResultType(method, type);
+		Class<?> returnType = getReturnType(method, type);
 		Arg[] args = method.getAnnotationsByType(Arg.class);
 		Result[] results = method.getAnnotationsByType(Result.class);
 		TypeDiscriminator typeDicriminator = method.getAnnotation(TypeDiscriminator.class);
@@ -276,7 +283,7 @@ public class MapperAnnotationBuilder {
 						paramNameResolver, languageDriver);
 					keyProperty = selectKey.keyProperty();
 				} else if (options == null) {
-					keyGenerator = configuration.isUseGeneratedKey() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
+					keyGenerator = configuration.isUseGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
 				} else {
 					keyGenerator = options.useGeneratedKeys() ? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
 					keyProperty = options.keyProperty();
@@ -340,7 +347,7 @@ public class MapperAnnotationBuilder {
 		Parameter[] parameters = method.getParameters();
 		for (Parameter param : parameters) {
 			Class<?> paramType = param.getType();
-			if (RowBounds.class.isAssignableFrom(parameType) || ResultHandler.class.isAssignableFrom(paramType)) {
+			if (RowBounds.class.isAssignableFrom(paramType) || ResultHandler.class.isAssignableFrom(paramType)) {
 				continue;
 			}
 			if (parameterType == null && param.getAnnotation(Param.class) == null) {
@@ -558,9 +565,7 @@ public class MapperAnnotationBuilder {
 	}
 	private SqlSource buildSqlSourceFromStrings(String[] strings, Class<?> parameterTypeClass, 
 		ParamNameResolver paramNameResolver, LanguageDriver languageDriver) {
-		return languageDriver.createSqlSource(configuration, String.join(" ", strings).trim(), parameterTypeClass
-			, paramNameResolver);
-				
+		return languageDriver.createSqlSource(configuration, String.join(" ", strings).trim(), parameterTypeClass);
 	}
 	
 	@SafeVarargs

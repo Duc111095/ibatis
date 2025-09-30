@@ -13,12 +13,12 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.StringTokenizer;
 
-import javax.crypto.KeyGenerator;
 
 import com.ducnh.ibatis.cache.Cache;
 import com.ducnh.ibatis.cache.decorators.LruCache;
 import com.ducnh.ibatis.cache.impl.PerpetualCache;
 import com.ducnh.ibatis.executor.ErrorContext;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
 import com.ducnh.ibatis.mapping.CacheBuilder;
 import com.ducnh.ibatis.mapping.Discriminator;
 import com.ducnh.ibatis.mapping.MappedStatement;
@@ -34,6 +34,7 @@ import com.ducnh.ibatis.mapping.SqlSource;
 import com.ducnh.ibatis.mapping.StatementType;
 import com.ducnh.ibatis.reflection.MetaClass;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
+import com.ducnh.ibatis.scripting.LanguageDriver;
 import com.ducnh.ibatis.session.Configuration;
 import com.ducnh.ibatis.type.JdbcType;
 import com.ducnh.ibatis.type.TypeHandler;
@@ -337,7 +338,7 @@ public class MapperBuilderAssistant extends BaseBuilder{
 			return Map.entry(javaType, javaType);
 		}
 		if (property != null) {
-			MetaClass metaResultType = MetaClass.forClass(resultType, configuration.getRelectorFactory());
+			MetaClass metaResultType = MetaClass.forClass(resultType, configuration.getReflectorFactory());
 			try {
 				return metaResultType.getGenericSetterType(property);
 			} catch (Exception e) {

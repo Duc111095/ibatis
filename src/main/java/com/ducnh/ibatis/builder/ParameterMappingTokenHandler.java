@@ -72,10 +72,10 @@ public class ParameterMappingTokenHandler extends BaseBuilder implements TokenHa
 		final JdbcType jdbcType = resolveJdbcType(propertiesMap.remove("jdbcType"));			
 		final String typeHandlerAlias = propertiesMap.remove("typeHandler");
 		
-		ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, Class<?> null);
+		ParameterMapping.Builder builder = new ParameterMapping.Builder(configuration, property, (Class<?>) null);
 		PropertyTokenizer propertyTokenizer = new PropertyTokenizer(property);
 		builder.jdbcType(jdbcType);
-		final Class<?> javaType = figureOutJavaType(propertieMap, property, propertyTokenizer, jdbcType);
+		final Class<?> javaType = figureOutJavaType(propertiesMap, property, propertyTokenizer, jdbcType);
 		builder.javaType(javaType);
 		
 		if (genericType == null) {
@@ -135,7 +135,7 @@ public class ParameterMappingTokenHandler extends BaseBuilder implements TokenHa
 		if (typeHandler != null) {
 			return parameterType;
 		}
-		if (jdbcType.CURSOR.equals(jdbcType)) {
+		if (JdbcType.CURSOR.equals(jdbcType)) {
 			return ResultSet.class;
 		}
 		if (paramNameResolver != null && ParamMap.class.equals(parameterType)) {

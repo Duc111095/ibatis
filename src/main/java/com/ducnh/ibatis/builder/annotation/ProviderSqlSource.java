@@ -11,6 +11,7 @@ import com.ducnh.ibatis.builder.BuilderException;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.SqlSource;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
+import com.ducnh.ibatis.scripting.LanguageDriver;
 import com.ducnh.ibatis.session.Configuration;
 
 public class ProviderSqlSource implements SqlSource{

@@ -8,9 +8,12 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
-import javax.crypto.KeyGenerator;
 
 import com.ducnh.ibatis.cursor.Cursor;
+import com.ducnh.ibatis.executor.keygen.Jdbc3KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.NoKeyGenerator;
+import com.ducnh.ibatis.executor.statement.StatementHandler;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.session.Configuration;
@@ -109,7 +112,7 @@ public class BatchExecutor extends BaseExecutor{
 					KeyGenerator keyGenerator = ms.getKeyGenerator();
 					if (Jdbc3KeyGenerator.class.equals(keyGenerator.getClass())) {
 						Jdbc3KeyGenerator jdbc3KeyGenerator = (Jdbc3KeyGenerator) keyGenerator;
-						jdbc3KeyGenerator.processBatct(ms, stmt, parameterObjects);
+						jdbc3KeyGenerator.processBatch(ms, stmt, parameterObjects);
 					} else if (!NoKeyGenerator.class.equals(keyGenerator.getClass())) {
 						for (Object parameter : parameterObjects) {
 							keyGenerator.processAfter(this, ms, stmt, parameter);

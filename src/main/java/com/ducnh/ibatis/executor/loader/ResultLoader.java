@@ -14,6 +14,7 @@ import com.ducnh.ibatis.mapping.Environment;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.reflection.factory.ObjectFactory;
 import com.ducnh.ibatis.session.Configuration;
+import com.ducnh.ibatis.session.ExecutorType;
 import com.ducnh.ibatis.session.RowBounds;
 import com.ducnh.ibatis.transaction.Transaction;
 import com.ducnh.ibatis.transaction.TransactionFactory;

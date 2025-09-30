@@ -6,7 +6,11 @@ import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.SQLException;
 
+import com.ducnh.ibatis.cursor.Cursor;
 import com.ducnh.ibatis.executor.Executor;
+import com.ducnh.ibatis.executor.keygen.Jdbc3KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.SelectKeyGenerator;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.ResultSetType;

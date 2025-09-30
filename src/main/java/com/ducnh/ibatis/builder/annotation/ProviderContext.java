@@ -1,6 +1,6 @@
 package com.ducnh.ibatis.builder.annotation;
 
-import com.google.protobuf.Method;
+import java.lang.reflect.Method;
 
 public class ProviderContext {
 	

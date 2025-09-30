@@ -1,6 +1,5 @@
 package com.ducnh.ibatis.scripting;
 
-import java.lang.module.Configuration;
 
 import com.ducnh.ibatis.executor.parameter.ParameterHandler;
 import com.ducnh.ibatis.mapping.BoundSql;
@@ -8,6 +7,7 @@ import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.mapping.SqlSource;
 import com.ducnh.ibatis.parsing.XNode;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
+import com.ducnh.ibatis.session.Configuration;
 
 public interface LanguageDriver {
 	

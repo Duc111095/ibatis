@@ -29,6 +29,8 @@ import com.ducnh.ibatis.cursor.defaults.DefaultCursor;
 import com.ducnh.ibatis.executor.ErrorContext;
 import com.ducnh.ibatis.executor.Executor;
 import com.ducnh.ibatis.executor.ExecutorException;
+import com.ducnh.ibatis.executor.loader.ResultLoader;
+import com.ducnh.ibatis.executor.loader.ResultLoaderMap;
 import com.ducnh.ibatis.executor.parameter.ParameterHandler;
 import com.ducnh.ibatis.executor.result.DefaultResultContext;
 import com.ducnh.ibatis.executor.result.DefaultResultHandler;
@@ -511,7 +513,7 @@ public class DefaultResultSetHandler implements ResultSetHandler{
 					foundValues = true;
 				}
 				if (value != null
-					|| configuration.isCallSetterOnNulls() && !metaObject.getSetterType(property).isPrimitive()) {
+					|| configuration.isCallSettersOnNulls() && !metaObject.getSetterType(property).isPrimitive()) {
 					metaObject.setValue(property, value);
 				}
 			}
@@ -581,7 +583,7 @@ public class DefaultResultSetHandler implements ResultSetHandler{
 					}
 					propertyName = columnName.substring(columnPrefix.length());
 				}
-				final String property = metaObject.findProperty(propertyName, configuration.isMapUnderscoreToCamelCase);
+				final String property = metaObject.findProperty(propertyName, configuration.isMapUnderscoreToCamelCase());
 				if (property != null && metaObject.hasSetter(property)) {
 					if (resultMap.getMappedProperties().contains(property)) {
 						continue;
@@ -1292,7 +1294,7 @@ public class DefaultResultSetHandler implements ResultSetHandler{
 	private void createAndStorePendingCreation(ResultHandler<?> resultHandler, ResultSet resultSet,
 		DefaultResultContext<Object> resultContext, PendingConstructorCreation pendingCreation) throws SQLException {
 		final Object result = pendingCreation.create(objectFactory);
-		storeObject(resultHandle, resultContext, result, null, resultSet);
+		storeObject(resultHandler, resultContext, result, null, resultSet);
 		nestedResultObjects.clear();
 	}
 	

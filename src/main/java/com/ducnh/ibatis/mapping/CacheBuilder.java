@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 
+import com.ducnh.ibatis.builder.InitializingObject;
 import com.ducnh.ibatis.cache.Cache;
 import com.ducnh.ibatis.cache.CacheException;
 import com.ducnh.ibatis.cache.decorators.BlockingCache;

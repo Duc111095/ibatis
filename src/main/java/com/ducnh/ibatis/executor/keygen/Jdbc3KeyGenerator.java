@@ -23,6 +23,7 @@ import com.ducnh.ibatis.reflection.ArrayUtil;
 import com.ducnh.ibatis.reflection.MetaObject;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
 import com.ducnh.ibatis.session.Configuration;
+import com.ducnh.ibatis.session.Configuration.StrictMap;
 import com.ducnh.ibatis.type.JdbcType;
 import com.ducnh.ibatis.type.TypeHandler;
 import com.ducnh.ibatis.type.TypeHandlerRegistry;
@@ -107,7 +108,7 @@ public class Jdbc3KeyGenerator implements KeyGenerator{
 				throw new ExecutorException(String.format(MSG_TOO_MANY_KEYS, counter));
 			}
 			ParamMap<?> paramMap = iterator.next();
-			for (assignerList.isEmpty()) {
+			if (assignerList.isEmpty()) {
 				for (int i = 0; i < keyProperties.length; i++) {
 					assignerList
 						.add(getAssignerForParamMap(configuration, rsmd, i+1, paramMap, keyProperties[i], keyProperties, false)
@@ -129,7 +130,7 @@ public class Jdbc3KeyGenerator implements KeyGenerator{
 			Entry<String, KeyAssigner> entry = getAssignerForParamMap(configuration, rsmd, i + 1, paramMap, keyProperties[i],
 				keyProperties, true);
 			Entry<Iterator<?>, List<KeyAssigner>> iteratorPair = assignerMap.computeIfAbsent(entry.getKey(),
-				k -> Map.Entry(collectionize(paramMap.get(k)).iterator(), new ArrayList<>()));
+				k -> Map.entry(collectionize(paramMap.get(k)).iterator(), new ArrayList<>()));
 			iteratorPair.getValue().add(entry.getValue());
 		}
 		long counter = 0;

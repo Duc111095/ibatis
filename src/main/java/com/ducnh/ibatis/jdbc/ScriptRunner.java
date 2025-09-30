@@ -132,7 +132,6 @@ public class ScriptRunner {
 		}
 	}
 	
-	@Deprecated
 	public void closeConnection() {
 		try {
 			connection.close();

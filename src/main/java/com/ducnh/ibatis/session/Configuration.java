@@ -74,6 +74,8 @@ import com.ducnh.ibatis.reflection.factory.DefaultObjectFactory;
 import com.ducnh.ibatis.reflection.factory.ObjectFactory;
 import com.ducnh.ibatis.reflection.wrapper.DefaultObjectWrapperFactory;
 import com.ducnh.ibatis.reflection.wrapper.ObjectWrapperFactory;
+import com.ducnh.ibatis.scripting.LanguageDriver;
+import com.ducnh.ibatis.scripting.LanguageDriverRegistry;
 import com.ducnh.ibatis.transaction.Transaction;
 import com.ducnh.ibatis.transaction.jdbc.JdbcTransactionFactory;
 import com.ducnh.ibatis.transaction.managed.ManagedTransactionFactory;
@@ -316,7 +318,7 @@ public class Configuration {
 		loadedResources.add(resource);
 	}
 	
-	public boolean isLoadedResource(String resource) {
+	public boolean isResourceLoaded(String resource) {
 		return loadedResources.contains(resource);
 	}
 	
@@ -463,6 +465,10 @@ public class Configuration {
 		return typeHandlerRegistry;
 	}
 	
+	public TypeAliasRegistry getTypeAliasRegistry() {
+		return typeAliasRegistry;
+	}
+	
 	public void setDefaultEnumTypeHandler(Class<? extends TypeHandler<?>> typeHandler) {
 		if (typeHandler != null) {
 			getTypeHandlerRegistry().setDefaultEnumTypeHandler(typeHandler);
@@ -509,7 +515,7 @@ public class Configuration {
 		if (driver == null) {
 			driver = XMLLanguageDriver.class;
 		}
-		getLanguageRegistry().setDefautlDriverClass(driver);
+		getLanguageRegistry().setDefaultDriverClass(driver);
 	}
 	
 	public LanguageDriver getDefaultScriptingLanguageInstance() {
@@ -881,7 +887,7 @@ public class Configuration {
 		}
 	}
 	
-	protected static class StrictMap<V> extends ConcurrentHashMap<String, V> {
+	public static class StrictMap<V> extends ConcurrentHashMap<String, V> {
 		
 		private static final long serialVersionUID = -4950446264854982944L;
 		private final String name;

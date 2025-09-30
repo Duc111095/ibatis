@@ -5,9 +5,13 @@ import java.util.Collections;
 import java.util.List;
 
 import com.ducnh.ibatis.cache.Cache;
+import com.ducnh.ibatis.executor.keygen.Jdbc3KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.KeyGenerator;
+import com.ducnh.ibatis.executor.keygen.NoKeyGenerator;
 import com.ducnh.ibatis.logging.Log;
 import com.ducnh.ibatis.logging.LogFactory;
 import com.ducnh.ibatis.reflection.ParamNameResolver;
+import com.ducnh.ibatis.scripting.LanguageDriver;
 import com.ducnh.ibatis.session.Configuration;
 
 public final class MappedStatement {
@@ -55,7 +59,7 @@ public final class MappedStatement {
 				new ArrayList<>()).build();
 			mappedStatement.resultMaps = new ArrayList<>();
 			mappedStatement.sqlCommandType = sqlCommandType;
-			mappedStatement.keyGenerator = configuration.isUseGeneratedKey() && SqlCommandType.INSERT.equals(sqlCommandType)
+			mappedStatement.keyGenerator = configuration.isUseGeneratedKeys() && SqlCommandType.INSERT.equals(sqlCommandType)
 				? Jdbc3KeyGenerator.INSTANCE : NoKeyGenerator.INSTANCE;
 			String logId = id;
 			if (configuration.getLogPrefix() != null) {
@@ -159,6 +163,11 @@ public final class MappedStatement {
 		
 		public Builder dirtySelect(boolean dirtySelect) {
 			mappedStatement.dirtySelect = dirtySelect;
+			return this;
+		}
+		
+		public Builder paramNameResolver(ParamNameResolver paramNameResolver) {
+			mappedStatement.paramNameResolver = paramNameResolver;
 			return this;
 		}
 		
@@ -297,6 +306,6 @@ public final class MappedStatement {
 		if (in == null || in.trim().length() == 0) {
 			return null;
 		}
-		in.split(",");
+		return in.split(",");
 	}
 }

@@ -8,6 +8,7 @@ import java.util.List;
 import com.ducnh.ibatis.cursor.Cursor;
 import com.ducnh.ibatis.executor.Executor;
 import com.ducnh.ibatis.executor.ExecutorException;
+import com.ducnh.ibatis.executor.parameter.ParameterHandler;
 import com.ducnh.ibatis.mapping.BoundSql;
 import com.ducnh.ibatis.mapping.MappedStatement;
 import com.ducnh.ibatis.session.ResultHandler;
