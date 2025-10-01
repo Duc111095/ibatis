@@ -6,6 +6,10 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.concurrent.Executor;
 
+import com.ducnh.ibatis.executor.parameter.ParameterHandler;
+import com.ducnh.ibatis.executor.resultset.ResultSetHandler;
+import com.ducnh.ibatis.executor.statement.StatementHandler;
+
 public class Invocation {
 
 	private static final List<Class<?>> targetClasses = Arrays.asList(Executor.class, ParameterHandler.class,

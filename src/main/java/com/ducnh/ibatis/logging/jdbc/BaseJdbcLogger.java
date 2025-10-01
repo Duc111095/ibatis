@@ -13,6 +13,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import com.ducnh.ibatis.builder.SqlSourceBuilder;
 import com.ducnh.ibatis.logging.Log;
 import com.ducnh.ibatis.reflection.ArrayUtil;
 
