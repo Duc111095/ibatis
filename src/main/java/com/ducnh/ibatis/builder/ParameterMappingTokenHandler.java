@@ -84,7 +84,7 @@ public class ParameterMappingTokenHandler extends BaseBuilder implements TokenHa
 		if ((typeHandler == null || typeHandlerAlias != null) && genericType != null && genericType != Object.class) {
 			typeHandler = resolveTypeHandler(parameterType, genericType, jdbcType, typeHandlerAlias);
 		}
-		handler.typeHandler(typeHandler);
+		builder.typeHandler(typeHandler);
 		
 		ParameterMode mode = null;
 		for (Map.Entry<String, String> entry : propertiesMap.entrySet()) {
